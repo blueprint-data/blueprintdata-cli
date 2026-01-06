@@ -1,7 +1,7 @@
 version: 1
 default_environment: dev
 
-project_id: { { PROJECT_NAME } }
+project_id: {{PROJECT_NAME}}
 
 send_anonymous_usage_stats: false
 

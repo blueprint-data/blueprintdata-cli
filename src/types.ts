@@ -20,3 +20,8 @@ export interface TemplateOptions {
   force?: boolean;
   offline?: boolean;
 }
+
+export interface FetchedTemplate {
+  path: string;
+  isTemporary: boolean;
+}

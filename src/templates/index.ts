@@ -1,6 +1,6 @@
 import * as p from '@clack/prompts';
 import fs from 'fs-extra';
-import { ProjectConfig } from '../types.js';
+import { ProjectConfig, FetchedTemplate } from '../types.js';
 import {
   TEMPLATE_MAPPINGS,
   STORAGE_DISPLAY_NAMES,
@@ -16,13 +16,13 @@ const { PROJECT_NAME, STORAGE_TYPE, STORAGE_DISPLAY_NAME } = PLACEHOLDERS;
 
 export const createProject = async (config: ProjectConfig) => {
   const spinner = p.spinner();
-  let templatePath: string | null = null;
+  let template: FetchedTemplate | null = null;
 
   try {
     spinner.start('Downloading template...');
 
     const templateConfig = TEMPLATE_MAPPINGS[config.stackType];
-    templatePath = await fetchTemplate(templateConfig);
+    template = await fetchTemplate(templateConfig);
 
     spinner.stop('Template downloaded');
 
@@ -30,11 +30,16 @@ export const createProject = async (config: ProjectConfig) => {
 
     const storageDisplayName = STORAGE_DISPLAY_NAMES[config.storageType];
 
-    await processTemplate(templatePath, config.targetDir, {
-      [PROJECT_NAME]: config.projectName,
-      [STORAGE_TYPE]: config.storageType,
-      [STORAGE_DISPLAY_NAME]: storageDisplayName,
-    });
+    await processTemplate(
+      template.path,
+      config.targetDir,
+      {
+        [PROJECT_NAME]: config.projectName,
+        [STORAGE_TYPE]: config.storageType,
+        [STORAGE_DISPLAY_NAME]: storageDisplayName,
+      },
+      template.isTemporary
+    );
 
     spinner.stop('Template processed');
 
@@ -56,9 +61,9 @@ export const createProject = async (config: ProjectConfig) => {
   } catch (error) {
     spinner.stop('Error creating project');
 
-    if (templatePath && (await fs.pathExists(templatePath))) {
+    if (template?.isTemporary && (await fs.pathExists(template.path))) {
       try {
-        await fs.remove(templatePath);
+        await fs.remove(template.path);
       } catch {
         // Ignore cleanup errors
       }

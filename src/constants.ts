@@ -1,8 +1,11 @@
 import { StackType, StorageType, TemplateConfig } from './types.js';
+import path from 'path';
 
 export const REPO_URL = 'github:blueprint-data/blueprintdata-cli';
 
 export const DEFAULT_BRANCH = 'main';
+
+export const LOCAL_TEMPLATE_DIR = path.join(process.cwd(), 'templates');
 
 export const TEMPLATE_MAPPINGS: Record<StackType, TemplateConfig> = {
   lite: {

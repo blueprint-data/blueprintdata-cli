@@ -1,8 +1,8 @@
-name: 'PROJECT_NAME_transform'
+name: '{{PROJECT_NAME}}_transform'
 version: 1.0.0
 config-version: 2
 
-profile: PROJECT_NAME
+profile: '{{PROJECT_NAME}}'
 
 model-paths:
   - models
@@ -23,7 +23,7 @@ clean-targets:
   - dbt_packages
 
 models:
-  PROJECT_NAME_transform:
+  '{{PROJECT_NAME}}_transform':
     staging:
       +materialized: view
     marts:

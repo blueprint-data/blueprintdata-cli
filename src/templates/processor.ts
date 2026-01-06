@@ -8,9 +8,12 @@ interface ProcessOptions {
 export const processTemplate = async (
   sourceDir: string,
   targetDir: string,
-  replacements: ProcessOptions
+  replacements: ProcessOptions,
+  cleanupSource: boolean = false
 ): Promise<void> => {
   await copyDir(sourceDir, targetDir, IGNORED_DIRS);
   await replaceInDir(targetDir, replacements);
-  await removeDir(sourceDir);
+  if (cleanupSource) {
+    await removeDir(sourceDir);
+  }
 };
