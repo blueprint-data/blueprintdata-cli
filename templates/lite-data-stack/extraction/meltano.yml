@@ -1,0 +1,36 @@
+version: 1
+default_environment: dev
+
+project_id: { { PROJECT_NAME } }
+
+send_anonymous_usage_stats: false
+
+plugins:
+  extractors:
+    - name: tap-csv
+      namespace: tap_csv
+      pip_url: pip-install-tap-csv
+      config:
+        files:
+          - entity_name: sample_data
+            path: data/sample.csv
+            keys:
+              - id
+
+  loaders:
+    - name: target-{{STORAGE_TYPE}}
+      namespace: target_{{STORAGE_TYPE}}
+      variant: transferwise
+      pip_url: pip-install-target-{{STORAGE_TYPE}}
+      config:
+        host: $DB_HOST
+        port: $DB_PORT
+        user: $DB_USER
+        password: $DB_PASSWORD
+        dbname: $DB_NAME
+        schema: raw_data
+
+environments:
+  - name: dev
+  - name: staging
+  - name: production

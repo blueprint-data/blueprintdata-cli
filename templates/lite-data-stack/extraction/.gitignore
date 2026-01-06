@@ -1,0 +1,9 @@
+.venv/
+venv/
+.env
+.env.local
+*.pyc
+__pycache__/
+.meltano/
+*.db
+*.log
