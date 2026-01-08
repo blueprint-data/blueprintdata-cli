@@ -1,6 +1,6 @@
 # BlueprintData CLI
 
-A CLI tool to scaffold data stack projects with pre-configured templates.
+A CLI tool to scaffold data stack projects with pre-configured templates. Built with Bun for maximum performance, runs on Node.js for compatibility.
 
 ## Installation
 
@@ -13,6 +13,11 @@ Or use directly with npx:
 ```bash
 npx blueprintdata-cli new
 ```
+
+## Prerequisites
+
+- Node.js >= 18.0.0 (for running the CLI)
+- Bun >= 1.0.0 (for development only)
 
 ## Usage
 
@@ -70,31 +75,37 @@ my-project/
 ### Setup
 
 ```bash
-npm install
-npm run build
+bun install
+bun run build
 npm link
 ```
 
 ### Testing
 
 ```bash
-npm test
-npm run test:ui
+bun test
+bun run test:ui
 ```
 
 ### Linting
 
 ```bash
-npm run lint
-npm run format
+bun run lint
+bun run format
+```
+
+### Type Checking
+
+```bash
+bun run typecheck
 ```
 
 ## Contributing
 
-1. Fork the repository
+1. Fork repository
 2. Create your feature branch
 3. Commit your changes
-4. Push to the branch
+4. Push to branch
 5. Create a Pull Request
 
 ## License

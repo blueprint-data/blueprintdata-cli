@@ -1,34 +1,43 @@
 version: 1
 default_environment: dev
 
-project_id: {{PROJECT_NAME}}
+project_id: { { PROJECT_NAME } }
 
 send_anonymous_usage_stats: false
 
 plugins:
-  extractors:
-    - name: tap-csv
-      namespace: tap_csv
-      pip_url: pip-install-tap-csv
-      config:
-        files:
-          - entity_name: sample_data
-            path: data/sample.csv
-            keys:
-              - id
+  # Add your extractors here
+  # Example:
+  # extractors:
+  #   - name: tap-your-source
+  #     namespace: tap_your_source
+  #     pip_url: tap-your-source
+  #     config:
+  #       # Your extractor configuration
 
-  loaders:
-    - name: target-{{STORAGE_TYPE}}
-      namespace: target_{{STORAGE_TYPE}}
-      variant: transferwise
-      pip_url: pip-install-target-{{STORAGE_TYPE}}
-      config:
-        host: $DB_HOST
-        port: $DB_PORT
-        user: $DB_USER
-        password: $DB_PASSWORD
-        dbname: $DB_NAME
-        schema: raw_data
+  # Add your loaders here
+  # Example:
+  # loaders:
+  #   - name: target-{{STORAGE_TYPE}}
+  #     namespace: target_{{STORAGE_TYPE}}
+  #     variant: transferwise
+  #     pip_url: pip-install-target-{{STORAGE_TYPE}}
+  #     config:
+  #       host: $DB_HOST
+  #       port: $DB_PORT
+  #       user: $DB_USER
+  #       password: $DB_PASSWORD
+  #       dbname: $DB_NAME
+  #       schema: raw_data
+
+  # State backend configuration (optional)
+  # Uncomment to enable state backend
+  # state:
+  #   - name: state-{{STORAGE_TYPE}}
+  #     namespace: state_{{STORAGE_TYPE}}
+  #     pip_url: meltano-state-backend-{{STORAGE_TYPE}}
+  #     config:
+  #       # Your state backend configuration
 
 environments:
   - name: dev

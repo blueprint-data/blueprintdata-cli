@@ -1,0 +1,207 @@
+name: dbt PR CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+
+env:
+  PYTHON_VERSION: '3.11'
+  # Update with your cloud storage location for artifacts
+  # ARTIFACTS_BUCKET: 'gs://your-bucket'  # For GCP
+  # ARTIFACTS_BUCKET: 's3://your-bucket'  # For AWS
+
+jobs:
+  dbt-pr-check:
+    name: dbt PR Checks
+    # Only run on open/sync/reopen, not on close
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      # Add authentication step for your cloud provider
+      # Example for GCP with Workload Identity:
+      # - name: Authenticate to Google Cloud
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     workload_identity_provider: 'projects/PROJECT_ID/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
+      #     service_account: 'SERVICE_ACCOUNT@PROJECT_ID.iam.gserviceaccount.com'
+
+      # Example for AWS with OIDC:
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME
+      #     aws-region: REGION
+
+      - name: Install dbt dependencies
+        run: uv pip install --system -e ".[transform]"
+
+      - name: Create dbt profiles.yml
+        working-directory: transform
+        run: |
+          cat > profiles.yml <<EOF
+          {{PROJECT_NAME}}:
+            outputs:
+              ci:
+                type: {{STORAGE_TYPE}}
+                # Add your {{STORAGE_TYPE}} configuration here
+                # Example for BigQuery:
+                # method: oauth
+                # project: your-project-id
+                # dataset: dwh
+                # threads: 4
+                # location: US
+                # job_execution_timeout_seconds: 300
+                # job_retries: 1
+                # priority: interactive
+            target: ci
+          EOF
+
+      - name: Download production manifest
+        working-directory: transform
+        run: |
+          mkdir -p prod-artifacts
+          # Uncomment and update based on your cloud provider
+          # For GCP:
+          # gcloud storage cp ${{ env.ARTIFACTS_BUCKET }}/manifest.json prod-artifacts/manifest.json || echo "⚠️  No production manifest found"
+
+          # For AWS:
+          # aws s3 cp ${{ env.ARTIFACTS_BUCKET }}/manifest.json prod-artifacts/manifest.json || echo "⚠️  No production manifest found"
+
+          echo "⚠️  Update this step with your cloud storage configuration"
+
+      - name: Install dbt packages
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: .
+        run: dbt deps
+
+      - name: Create sandbox dataset
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Uncomment and update based on your cloud provider
+          # For BigQuery:
+          # DATASET_NAME="SANDBOX_CI_PR_${PR_NUMBER}"
+          # if ! bq ls --project_id=YOUR_PROJECT_ID | grep -q "${DATASET_NAME}"; then
+          #   bq mk --project_id=YOUR_PROJECT_ID \
+          #     --location=US \
+          #     --description="CI dataset for PR #${PR_NUMBER}" \
+          #     ${DATASET_NAME}
+          # fi
+
+          # For Snowflake:
+          # DATASET_NAME="SANDBOX_CI_PR_${PR_NUMBER}"
+          # snowsql -q "CREATE SCHEMA IF NOT EXISTS YOUR_DATABASE.${DATASET_NAME};"
+
+          # For Redshift:
+          # DATASET_NAME="SANDBOX_CI_PR_${PR_NUMBER}"
+          # psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "CREATE SCHEMA IF NOT EXISTS ${DATASET_NAME};"
+
+          echo "⚠️  Update this step with your cloud provider dataset creation command"
+
+      - name: Run dbt with slim CI and defer
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: .
+          CI: 'true'
+          DBT_CI_PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -f prod-artifacts/manifest.json ]; then
+            dbt build --target ci \
+              --select state:modified+ \
+              --defer --state prod-artifacts \
+              --fail-fast
+          else
+            dbt build --target ci --fail-fast
+          fi
+
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            let comment = `## dbt PR CI Results\n\n`;
+            comment += `**Sandbox Dataset**: \`SANDBOX_CI_PR_${prNumber}\`\n`;
+            comment += `**Workflow**: [View Details](${runUrl})\n\n`;
+            comment += '${{ job.status }}' === 'success'
+              ? '✅ All dbt models built and tested successfully!'
+              : '❌ dbt build failed. Check workflow logs.';
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment
+            });
+
+  cleanup-dataset:
+    name: Cleanup Sandbox Dataset
+    # Only run when PR is closed
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Authenticate to your cloud provider
+        # Uncomment and update based on your cloud provider
+        # Example for GCP:
+        # - name: Authenticate to Google Cloud
+        #   uses: google-github-actions/auth@v2
+        #   with:
+        #     workload_identity_provider: 'projects/PROJECT_ID/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
+        #     service_account: 'SERVICE_ACCOUNT@PROJECT_ID.iam.gserviceaccount.com'
+
+        # Example for AWS:
+        # - name: Configure AWS credentials
+        #   uses: aws-actions/configure-aws-credentials@v4
+        #   with:
+        #     role-to-assume: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME
+        #     aws-region: REGION
+        run: echo "⚠️  Update this step with your cloud provider authentication"
+
+      - name: Delete sandbox dataset
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Uncomment and update based on your cloud provider
+          # For BigQuery:
+          # DATASET_NAME="SANDBOX_CI_PR_${PR_NUMBER}"
+          # if bq ls --project_id=YOUR_PROJECT_ID | grep -q "${DATASET_NAME}"; then
+          #   bq rm -r -f -d --project_id=YOUR_PROJECT_ID ${DATASET_NAME}
+          #   echo "✅ Deleted dataset ${DATASET_NAME}"
+          # else
+          #   echo "ℹ️  Dataset ${DATASET_NAME} does not exist, nothing to delete"
+          # fi
+
+          # For Snowflake:
+          # DATASET_NAME="SANDBOX_CI_PR_${PR_NUMBER}"
+          # snowsql -q "DROP SCHEMA IF EXISTS YOUR_DATABASE.${DATASET_NAME};"
+
+          # For Redshift:
+          # DATASET_NAME="SANDBOX_CI_PR_${PR_NUMBER}"
+          # psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "DROP SCHEMA IF EXISTS ${DATASET_NAME} CASCADE;"
+
+          echo "⚠️  Update this step with your cloud provider dataset deletion command"

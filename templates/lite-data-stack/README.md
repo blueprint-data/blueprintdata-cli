@@ -2,20 +2,21 @@
 
 A Lite Data Stack project powered by Meltano (extraction) and dbt (transformation) with {{STORAGE_DISPLAY_NAME}} storage.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.10+
 - {{STORAGE_DISPLAY_NAME}} database
 - Git
+- uv (Python package manager)
 
 ### Environment Variables
 
 Create a `.env` file in the root directory:
 
 ```bash
-# Database Configuration
+# Database Configuration (for {{STORAGE_DISPLAY_NAME}})
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=your_database
@@ -25,64 +26,103 @@ DB_PASSWORD=your_password
 
 ### Setup
 
-1. **Clone and navigate to the project**:
-
-   ```bash
-   cd {{PROJECT_NAME}}
-   ```
-
-2. **Set up Extraction (Meltano)**:
+1. **Set up Extraction (Meltano)**:
 
    ```bash
    cd extraction
-   python3 -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   pip install meltano
-   meltano install
+   ./scripts/setup-local.sh
    ```
 
-3. **Set up Transform (dbt)**:
+   This script will:
+   - Check Python version (>=3.10)
+   - Create a virtual environment
+   - Install uv and dependencies via `pyproject.toml`
+   - Initialize Meltano
+
+2. **Set up Transform (dbt)**:
 
    ```bash
-   cd ../transform
-   python3 -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   pip install dbt-{{STORAGE_TYPE}}
+   cd transform
+   ./scripts/setup-local.sh
+   ```
+
+   This script will:
+   - Check Python version (>=3.10)
+   - Create a virtual environment
+   - Install uv and dependencies via `pyproject.toml`
+
+3. **Configure dbt**:
+
+   ```bash
+   cd transform
    cp profiles.yml.example profiles.yml
    # Edit profiles.yml with your database credentials
    ```
 
-4. **Run Extraction**:
+4. **Set DBT_USER for development**:
 
    ```bash
-   cd ../extraction
-   meltano run tap-csv target-{{STORAGE_TYPE}}
+   export DBT_USER="yourname"
    ```
 
-5. **Run Transformation**:
+### Running
+
+1. **Configure your extractors** in `extraction/meltano.yml`:
+   - Add your data sources (taps)
+   - Configure destination (target)
+
+2. **Run Extraction**:
+
+   ```bash
+   cd extraction
+   meltano run <tap-name> <loader-name>
+   ```
+
+3. **Run Transformation**:
+
    ```bash
    cd transform
+   dbt deps
    dbt run
+   dbt test
    ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 {{PROJECT_NAME}}/
-├── extraction/          # Meltano project for data extraction
-│   ├── meltano.yml     # Meltano configuration
-│   └── .venv/          # Python virtual environment
-├── transform/          # dbt project for data transformation
-│   ├── dbt_project.yml # dbt configuration
-│   ├── profiles.yml    # Database profiles
-│   └── models/         # dbt models
-└── .github/
-    └── workflows/      # CI/CD workflows
-        ├── extract.yml
-        └── transform.yml
+├── extraction/                # Meltano project for data extraction
+│   ├── meltano.yml          # Meltano configuration
+│   ├── scripts/
+│   │   └── setup-local.sh   # Helper script for setup
+│   └── .venv/              # Python virtual environment
+├── transform/              # dbt project for data transformation
+│   ├── dbt_project.yml     # dbt configuration
+│   ├── packages.yml         # dbt packages
+│   ├── profiles.yml.example # Database profiles template
+│   ├── macros/
+│   │   └── generate_schema_name.sql  # Schema naming with sandbox support
+│   ├── models/
+│   │   ├── staging/        # Staging models (incremental)
+│   │   └── production/
+│   │       └── marts/      # Production models (tables)
+│   ├── scripts/
+│   │   └── setup-local.sh  # Helper script for setup
+│   ├── seeds/              # Seed data
+│   ├── analyses/           # Analysis queries
+│   ├── snapshots/          # Snapshots
+│   └── tests/             # Tests
+├── pyproject.toml         # Python dependencies with uv support
+├── .github/
+│   └── workflows/        # CI/CD workflows
+│       ├── data-pipeline.yml          # ETL workflow (scheduled)
+│       ├── transform-deploy.yml       # Slim CI deploy (main branch)
+│       ├── transform-pr-ci.yml        # PR validation with sandbox
+│       └── cleanup-sandbox-datasets.yml  # Weekly cleanup
+└── README.md
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Extraction (Meltano)
 
@@ -91,21 +131,99 @@ Edit `extraction/meltano.yml` to:
 - Add data sources (taps)
 - Configure destination (target)
 - Schedule extraction jobs
+- Enable state backend (optional)
 
 ### Transform (dbt)
 
-Edit `transform/dbt_project.yml` to:
+#### Environments
 
-- Configure model materialization
-- Set up testing
-- Manage dbt packages
+- **Production**: Uses configured schema names
+- **Development**: Uses sandbox datasets (`SANDBOX_<USER>`)
+- **CI**: Uses PR-specific sandbox datasets (`SANDBOX_CI_PR_<NUMBER>`)
 
-Edit `transform/profiles.yml` to:
+#### Sandbox Strategy
 
-- Configure database connections
-- Set up different environments (dev, staging, prod)
+The project uses sandbox datasets for development and CI:
 
-## 🧪 Testing
+- **Local development**: Each developer gets `SANDBOX_<USER>` dataset
+- **PR CI**: Each PR gets `SANDBOX_CI_PR_<NUMBER>` dataset
+- **Production**: Direct schema access with `persist_docs` enabled
+
+#### Defer Support
+
+When running with `--defer` flag, dbt will use production datasets for unmodified models:
+
+```bash
+dbt build --defer --state prod-artifacts --select state:modified+
+```
+
+## CI/CD
+
+### Workflows
+
+1. **Data Pipeline** (`.github/workflows/data-pipeline.yml`)
+   - Scheduled runs (configurable cron)
+   - Manual dispatch
+   - Runs extraction followed by transformation
+
+2. **dbt Deploy** (`.github/workflows/transform-deploy.yml`)
+   - Triggered on push to `main`
+   - Slim CI: builds only modified models
+   - Downloads/uploads production manifest for state comparison
+
+3. **dbt PR CI** (`.github/workflows/transform-pr-ci.yml`)
+   - Runs on PR open/sync/reopen
+   - Creates PR-specific sandbox dataset
+   - Builds only modified models with defer
+   - Posts results as PR comment
+   - Auto-cleanup on PR close
+
+4. **Cleanup Sandbox Datasets** (`.github/workflows/cleanup-sandbox-datasets.yml`)
+   - Weekly scheduled cleanup
+   - Removes unused sandbox datasets
+   - Dry-run mode available
+
+### Setting Up CI/CD
+
+You'll need to configure:
+
+1. **Cloud provider authentication** (GCP Workload Identity, AWS OIDC, etc.)
+2. **Storage for artifacts** (manifest.json for state comparison)
+3. **Dataset management** for sandbox creation/deletion
+4. **Secrets** for database credentials
+
+Update the workflow files with your specific cloud provider configuration.
+
+## Development
+
+### Local Development
+
+1. Install dependencies via setup scripts
+2. Set `DBT_USER` environment variable
+3. Work in your sandbox dataset: `SANDBOX_<USER>`
+4. Test changes before committing
+
+### Using Defer
+
+To test changes against production data:
+
+```bash
+# Download production manifest
+# (automatically done in CI/CD)
+
+# Run with defer
+dbt build --defer --state prod-artifacts --select state:modified+
+```
+
+### Best Practices
+
+- Always run in sandbox datasets for development
+- Use `--defer` to test against production data
+- Test in PR before merging to main
+- Keep staging models incremental for efficiency
+- Document models with `persist_docs` enabled
+
+## Testing
 
 ### Test Extraction
 
@@ -119,29 +237,49 @@ meltano test
 ```bash
 cd transform
 dbt test
+dbt run
 ```
 
-## 🔄 CI/CD
+## Troubleshooting
 
-This project uses GitHub Actions for automated:
+### DBT_USER not set
 
-- Data extraction (scheduled hourly)
-- Data transformation (triggered after extraction)
-- Testing
+For development mode, ensure `DBT_USER` is set:
 
-## 📚 Resources
+```bash
+export DBT_USER="yourname"
+```
+
+### Sandbox dataset issues
+
+If sandbox dataset doesn't exist:
+
+- Local: Check database permissions
+- CI: Check cloud provider authentication
+
+### Defer not working
+
+Ensure:
+
+- Production manifest is downloaded
+- State directory is correctly specified
+- `--defer` flag is used
+
+## Resources
 
 - [Meltano Documentation](https://docs.meltano.com/)
 - [dbt Documentation](https://docs.getdbt.com/)
 - [{{STORAGE_DISPLAY_NAME}} Documentation](https://www.{{STORAGE_TYPE}}.com/docs)
+- [uv Documentation](https://github.com/astral-sh/uv)
 
-## 🤝 Contributing
+## Contributing
 
 1. Create a feature branch
 2. Make your changes
-3. Run tests
+3. Test in your sandbox dataset
 4. Submit a pull request
+5. CI will run in PR-specific sandbox dataset
 
-## 📄 License
+## License
 
 MIT

@@ -1,0 +1,30 @@
+# Bun configuration for BlueprintData CLI
+
+[install]
+# Automatically install dependencies
+auto = true
+
+# Install dev dependencies
+dev = true
+
+# Lockfile settings
+lockfile = true
+lockfileSave = true
+
+[build]
+# Build target
+target = "bun"
+
+# Build options
+minify = true
+sourcemap = true
+
+[test]
+# Test configuration
+preload = ["./vitest.config.ts"]
+
+
+
+[bun]
+# Bun runtime configuration
+smol = false

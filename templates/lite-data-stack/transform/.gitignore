@@ -5,3 +5,5 @@ profiles.yml
 .env
 .env.local
 logs/
+prod-artifacts/
+*.egg-info/

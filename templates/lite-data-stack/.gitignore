@@ -7,3 +7,27 @@ coverage/
 .DS_Store
 dist/
 build/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# dbt
+target/
+dbt_packages/
+*.dbt
+logs/
+profiles.yml
+prod-artifacts/
+
+# Meltano
+.meltano/
+*.db

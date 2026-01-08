@@ -1,0 +1,134 @@
+name: Data Pipeline
+
+on:
+  schedule:
+    # Run at 7 AM UTC every day (adjust as needed)
+    - cron: '0 7 * * *'
+  workflow_dispatch: # Allow manual triggers
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  extract:
+    name: Extract Data (Meltano)
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      # Add authentication step for your cloud provider
+      # Example for GCP with Workload Identity:
+      # - name: Authenticate to Google Cloud
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     workload_identity_provider: 'projects/PROJECT_ID/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
+      #     service_account: 'SERVICE_ACCOUNT@PROJECT_ID.iam.gserviceaccount.com'
+
+      # Example for AWS with OIDC:
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME
+      #     aws-region: REGION
+
+      - name: Install extraction dependencies
+        run: |
+          uv pip install --system -e ".[extraction]"
+
+      - name: Run Meltano extraction
+        working-directory: extraction
+        env:
+          # Add your environment variables here
+          # Example:
+          # DB_HOST: ${{ secrets.DB_HOST }}
+          # DB_PORT: ${{ secrets.DB_PORT }}
+          # DB_USER: ${{ secrets.DB_USER }}
+          # DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          # DB_NAME: ${{ secrets.DB_NAME }}
+        run: |
+          # Run your extraction job
+          # Example: meltano --environment prod el tap-your-source target-{{STORAGE_TYPE}}
+          echo "Configure your extraction job in meltano.yml and update this step"
+
+  transform:
+    name: Transform Data (dbt)
+    runs-on: ubuntu-latest
+    needs: extract
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      # Add authentication step for your cloud provider
+      # Example for GCP with Workload Identity:
+      # - name: Authenticate to Google Cloud
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     workload_identity_provider: 'projects/PROJECT_ID/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
+      #     service_account: 'SERVICE_ACCOUNT@PROJECT_ID.iam.gserviceaccount.com'
+
+      # Example for AWS with OIDC:
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME
+      #     aws-region: REGION
+
+      - name: Install dbt dependencies
+        run: |
+          uv pip install --system -e ".[transform]"
+
+      - name: Create dbt profiles.yml
+        working-directory: transform
+        run: |
+          # Configure profiles.yml for your {{STORAGE_DISPLAY_NAME}} database
+          # Update the following based on your cloud provider
+          cat > profiles.yml <<EOF
+          {{PROJECT_NAME}}:
+            outputs:
+              prod:
+                type: {{STORAGE_TYPE}}
+                # Add your {{STORAGE_TYPE}} configuration here
+                # Example for BigQuery:
+                # method: oauth
+                # project: your-project-id
+                # dataset: dwh
+                # threads: 4
+                # location: US
+                # job_execution_timeout_seconds: 300
+                # job_retries: 1
+                # priority: interactive
+            target: prod
+          EOF
+
+      - name: Run dbt
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: .
+        run: |
+          dbt deps
+          dbt build --target prod

@@ -7,3 +7,5 @@ __pycache__/
 .meltano/
 *.db
 *.log
+output/
+*.egg-info/

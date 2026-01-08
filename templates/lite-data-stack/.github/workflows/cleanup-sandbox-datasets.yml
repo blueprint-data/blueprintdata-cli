@@ -1,0 +1,105 @@
+name: Cleanup Sandbox Datasets
+
+on:
+  schedule:
+    # Run every Monday at 2 AM UTC
+    - cron: '0 2 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  cleanup-sandboxes:
+    name: Clean Up Unused Sandbox Datasets
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      # Add authentication step for your cloud provider
+      # Example for GCP with Workload Identity:
+      # - name: Authenticate to Google Cloud
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     workload_identity_provider: 'projects/PROJECT_ID/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
+      #     service_account: 'SERVICE_ACCOUNT@PROJECT_ID.iam.gserviceaccount.com'
+
+      # Example for AWS with OIDC:
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME
+      #     aws-region: REGION
+
+      - name: Install dbt dependencies
+        run: uv pip install --system -e ".[transform]"
+
+      - name: Create dbt profiles.yml
+        working-directory: transform
+        run: |
+          cat > profiles.yml <<EOF
+          {{PROJECT_NAME}}:
+            outputs:
+              prod:
+                type: {{STORAGE_TYPE}}
+                # Add your {{STORAGE_TYPE}} configuration here
+                # Example for BigQuery:
+                # method: oauth
+                # project: your-project-id
+                # dataset: dwh
+                # threads: 4
+                # location: US
+                # job_execution_timeout_seconds: 300
+                # job_retries: 1
+                # priority: interactive
+            target: prod
+          EOF
+
+      - name: Install dbt packages
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: .
+        run: dbt deps
+
+      - name: Find unused sandbox datasets (dry run)
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: .
+        run: |
+          # Note: You need to create a drop_unused_relations macro in transform/macros/
+          # Example macro is available at: https://github.com/dbt-labs/dbt-utils
+          # Or create a custom macro for your specific database
+
+          echo "🔍 Running dry run to identify unused sandbox datasets..."
+          # Uncomment when you have the macro:
+          # dbt run-operation drop_unused_relations --target prod --args '{dryrun: True, cleanup_datasets: True}'
+          echo "⚠️  Update this step with your cleanup macro"
+
+      - name: Delete unused sandbox datasets
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: .
+        run: |
+          # Uncomment when you have the macro:
+          # echo "🗑️  Deleting unused sandbox datasets..."
+          # dbt run-operation drop_unused_relations --target prod --args '{dryrun: False, cleanup_datasets: True}'
+          echo "⚠️  Update this step with your cleanup macro"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "✅ Sandbox cleanup job completed"
+          echo "Check the logs above for details on what was deleted"

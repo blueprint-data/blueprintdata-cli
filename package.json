@@ -2,7 +2,6 @@
   "name": "blueprintdata-cli",
   "version": "0.1.0",
   "description": "CLI tool to scaffold data stack projects",
-  "type": "module",
   "bin": {
     "blueprintdata": "./dist/index.js"
   },
@@ -10,15 +9,16 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "test": "vitest",
+    "build": "bun run build-bun.ts && chmod +x dist/index.js",
+    "build:node": "bun run build.ts && chmod +x dist/index.js",
+    "dev": "bun run build-bun.ts --watch",
+    "test": "bun test",
     "test:ui": "vitest --ui",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "bun run build"
   },
   "keywords": [
     "cli",
@@ -30,6 +30,14 @@
   ],
   "author": "BlueprintData",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blueprint-data/blueprintdata-cli.git"
+  },
+  "homepage": "https://github.com/blueprint-data/blueprintdata-cli#readme",
+  "bugs": {
+    "url": "https://github.com/blueprint-data/blueprintdata-cli/issues"
+  },
   "dependencies": {
     "@clack/prompts": "^0.7.0",
     "chalk": "^5.3.0",
@@ -40,20 +48,42 @@
     "validate-npm-package-name": "^5.0.0"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@types/bun": "latest",
     "@types/fs-extra": "^11.0.4",
-    "@types/node": "^20.11.5",
     "@types/validate-npm-package-name": "^4.0.0",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
-    "esbuild": "^0.27.2",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.2.4",
-    "tsup": "^8.0.1",
+    "semantic-release": "^25.0.2",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
   },
+  "type": "module",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "trustedDependencies": [
+    "esbuild"
+  ],
+  "release": {
+    "branches": ["main"],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/changelog",
+      ["@semantic-release/npm", { "provenance": true }],
+      [
+        "@semantic-release/git",
+        {
+          "assets": ["package.json", "CHANGELOG.md"],
+          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+        }
+      ],
+      "@semantic-release/github"
+    ]
   }
 }

@@ -1,0 +1,152 @@
+name: dbt Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'transform/**'
+      - '.github/workflows/transform-deploy.yml'
+  workflow_dispatch: # Allow manual triggers
+
+env:
+  PYTHON_VERSION: '3.11'
+  # Update with your cloud storage location for artifacts
+  # ARTIFACTS_BUCKET: 'gs://your-bucket'  # For GCP
+  # ARTIFACTS_BUCKET: 's3://your-bucket'  # For AWS
+
+jobs:
+  deploy:
+    name: Deploy dbt Changes
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      # Add authentication step for your cloud provider
+      # Example for GCP with Workload Identity:
+      # - name: Authenticate to Google Cloud
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     workload_identity_provider: 'projects/PROJECT_ID/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
+      #     service_account: 'SERVICE_ACCOUNT@PROJECT_ID.iam.gserviceaccount.com'
+
+      # Example for AWS with OIDC:
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME
+      #     aws-region: REGION
+
+      - name: Install dbt dependencies
+        run: uv pip install --system -e ".[transform]"
+
+      - name: Create dbt profiles.yml
+        working-directory: transform
+        run: |
+          cat > profiles.yml <<EOF
+          {{PROJECT_NAME}}:
+            outputs:
+              prod:
+                type: {{STORAGE_TYPE}}
+                # Add your {{STORAGE_TYPE}} configuration here
+                # Example for BigQuery:
+                # method: oauth
+                # project: your-project-id
+                # dataset: dwh
+                # threads: 4
+                # location: US
+                # job_execution_timeout_seconds: 300
+                # job_retries: 1
+                # priority: interactive
+            target: prod
+          EOF
+
+      - name: Download production manifest for state comparison
+        working-directory: transform
+        run: |
+          mkdir -p prod-artifacts
+          # Uncomment and update based on your cloud provider
+          # For GCP:
+          # if gcloud storage cp ${{ env.ARTIFACTS_BUCKET }}/manifest.json prod-artifacts/manifest.json; then
+          #   echo "✅ Downloaded production manifest for state comparison"
+          # else
+          #   echo "⚠️  No production manifest found - will run full build"
+          # fi
+
+          # For AWS:
+          # if aws s3 cp ${{ env.ARTIFACTS_BUCKET }}/manifest.json prod-artifacts/manifest.json; then
+          #   echo "✅ Downloaded production manifest for state comparison"
+          # else
+          #   echo "⚠️  No production manifest found - will run full build"
+          # fi
+
+          echo "⚠️  Update this step with your cloud storage configuration"
+
+      - name: Install dbt packages
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: .
+        run: dbt deps
+
+      - name: Build modified models
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: .
+        run: |
+          if [ -f prod-artifacts/manifest.json ]; then
+            echo "🚀 Running slim CI - building only modified models and their children"
+            dbt build --target prod \
+              --select state:modified+ \
+              --state prod-artifacts
+          else
+            echo "📦 No previous state found - running full build"
+            dbt build --target prod
+          fi
+
+      - name: Upload updated manifest to storage
+        if: success()
+        working-directory: transform
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+          # Uncomment and update based on your cloud provider
+          # For GCP:
+          # # Upload manifest.json for defer
+          # gcloud storage cp target/manifest.json ${{ env.ARTIFACTS_BUCKET }}/manifest.json
+          # # Upload versioned copy for history
+          # gcloud storage cp target/manifest.json ${{ env.ARTIFACTS_BUCKET }}/history/manifest_${TIMESTAMP}.json
+
+          # For AWS:
+          # # Upload manifest.json for defer
+          # aws s3 cp target/manifest.json ${{ env.ARTIFACTS_BUCKET }}/manifest.json
+          # # Upload versioned copy for history
+          # aws s3 cp target/manifest.json ${{ env.ARTIFACTS_BUCKET }}/history/manifest_${TIMESTAMP}.json
+
+          echo "⚠️  Update this step with your cloud storage configuration"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ **Status**: Deployment successful" >> $GITHUB_STEP_SUMMARY
+            echo "- Modified models were built and deployed" >> $GITHUB_STEP_SUMMARY
+            echo "- Production manifest updated in storage" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status**: Deployment failed" >> $GITHUB_STEP_SUMMARY
+            echo "- Check the logs above for details" >> $GITHUB_STEP_SUMMARY
+          fi
