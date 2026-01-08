@@ -1,6 +1,6 @@
 {
   "name": "blueprintdata-cli",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "CLI tool to scaffold data stack projects",
   "bin": {
     "blueprintdata": "./dist/index.js"
@@ -70,16 +70,26 @@
     "esbuild"
   ],
   "release": {
-    "branches": ["main"],
+    "branches": [
+      "main"
+    ],
     "plugins": [
       "@semantic-release/commit-analyzer",
       "@semantic-release/release-notes-generator",
       "@semantic-release/changelog",
-      ["@semantic-release/npm", { "provenance": true }],
+      [
+        "@semantic-release/npm",
+        {
+          "provenance": true
+        }
+      ],
       [
         "@semantic-release/git",
         {
-          "assets": ["package.json", "CHANGELOG.md"],
+          "assets": [
+            "package.json",
+            "CHANGELOG.md"
+          ],
           "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
         }
       ],
