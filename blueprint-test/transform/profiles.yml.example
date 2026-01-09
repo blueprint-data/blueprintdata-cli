@@ -1,0 +1,34 @@
+blueprint-test:
+
+  outputs:
+    dev:
+      type: postgres
+      host: $DB_HOST
+      port: $DB_PORT
+      user: $DB_USER
+      password: $DB_PASSWORD
+      dbname: $DB_NAME
+      schema: analytics
+      threads: 4
+
+    staging:
+      type: postgres
+      host: $DB_HOST
+      port: $DB_PORT
+      user: $DB_USER
+      password: $DB_PASSWORD
+      dbname: $DB_NAME
+      schema: analytics_staging
+      threads: 4
+
+    production:
+      type: postgres
+      host: $DB_HOST
+      port: $DB_PORT
+      user: $DB_USER
+      password: $DB_PASSWORD
+      dbname: $DB_NAME
+      schema: analytics_prod
+      threads: 4
+
+  target: dev

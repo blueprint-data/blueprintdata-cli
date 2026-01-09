@@ -1,0 +1,45 @@
+version: 1
+default_environment: dev
+
+project_id: { { PROJECT_NAME } }
+
+send_anonymous_usage_stats: false
+
+plugins:
+  # Add your extractors here
+  # Example:
+  # extractors:
+  #   - name: tap-your-source
+  #     namespace: tap_your_source
+  #     pip_url: tap-your-source
+  #     config:
+  #       # Your extractor configuration
+
+  # Add your loaders here
+  # Example:
+  # loaders:
+  #   - name: target-postgres
+  #     namespace: target_postgres
+  #     variant: transferwise
+  #     pip_url: pip-install-target-postgres
+  #     config:
+  #       host: $DB_HOST
+  #       port: $DB_PORT
+  #       user: $DB_USER
+  #       password: $DB_PASSWORD
+  #       dbname: $DB_NAME
+  #       schema: raw_data
+
+  # State backend configuration (optional)
+  # Uncomment to enable state backend
+  # state:
+  #   - name: state-postgres
+  #     namespace: state_postgres
+  #     pip_url: meltano-state-backend-postgres
+  #     config:
+  #       # Your state backend configuration
+
+environments:
+  - name: dev
+  - name: staging
+  - name: production

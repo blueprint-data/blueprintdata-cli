@@ -1,0 +1,11 @@
+{
+  "editor.formatOnSave": true,
+  "python.formatting.provider": "black",
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+  "sqlfluff.format.enabled": true,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.meltano": true
+  }
+}
