@@ -23,7 +23,7 @@ on-run-start:
     {% endif %}
 
 models:
-  { { PROJECT_NAME } }:
+  {{PROJECT_NAME}}:
     +persist_docs:
       relation: true
       columns: true
