@@ -14,6 +14,12 @@ export const TEMPLATE_MAPPINGS: Record<StackType, TemplateConfig> = {
     branch: DEFAULT_BRANCH,
     path: 'templates/lite-data-stack',
   },
+  'lite-postgres': {
+    name: 'lite-data-stack-postgres',
+    repoUrl: REPO_URL,
+    branch: DEFAULT_BRANCH,
+    path: 'templates/lite-data-stack-postgres',
+  },
   aws: {
     name: 'aws-data-stack',
     repoUrl: REPO_URL,

@@ -6,6 +6,7 @@ export const promptStackType = async (): Promise<StackType> => {
     message: 'Select a stack type',
     options: [
       { value: 'lite', label: 'Lite Data Stack' },
+      { value: 'lite-postgres', label: 'Lite Data Stack (Postgres)' },
       { value: 'aws', label: 'AWS Data Stack (Coming soon)' },
     ],
   })) as StackType;

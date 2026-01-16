@@ -18,7 +18,10 @@ export const handleNewProject = async (options: NewProjectOptions) => {
 
   const projectName = options.projectName || (await promptProjectName());
 
-  const storageType: StorageType = (options.storage as StorageType) || (await promptStorage());
+  const storageType: StorageType =
+    stackType === 'lite-postgres'
+      ? 'postgres'
+      : (options.storage as StorageType) || (await promptStorage());
 
   const config: ProjectConfig = {
     stackType,
