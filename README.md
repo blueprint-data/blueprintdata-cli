@@ -29,29 +29,31 @@ blueprintdata new [project-name]
 
 The CLI will prompt you for:
 
-- Stack type (Lite Data Stack, Lite Data Stack (Postgres), AWS Data Stack)
+- Stack type (Lite Data Stack - BigQuery, Lite Data Stack - Postgres, AWS Data Stack)
 - Project name
-- Storage type (PostgreSQL, BigQuery) when applicable
+- Storage type (only if the stack supports multiple storages)
 
 ### Options
 
 ```bash
-blueprintdata new my-project --stack lite --storage postgres
+blueprintdata new my-project --stack lite-bigquery
+# or
+blueprintdata new my-project --stack lite-postgres
 ```
 
-- `--stack <type>`: Stack type (lite, lite-postgres, aws)
-- `--storage <type>`: Storage type (postgres, bigquery)
+- `--stack <type>`: Stack type (lite-bigquery, lite-postgres, aws; `lite` remains an alias for lite-bigquery)
+- `--storage <type>`: Storage type (postgres, bigquery) — only for stacks that allow a manual storage choice
 
 ## Available Stacks
 
-### Lite Data Stack
+### Lite Data Stack (BigQuery)
 
-The Lite Data Stack includes:
+The Lite Data Stack (BigQuery) includes:
 
-- **Extraction**: Meltano with tap-csv
-- **Transformation**: dbt with {{STORAGE_TYPE}}
+- **Extraction**: Meltano with tap-github + target-bigquery
+- **Transformation**: dbt with BigQuery
 - **CI/CD**: GitHub Actions workflows
-- **Storage**: PostgreSQL or BigQuery
+- **Storage**: BigQuery
 
 ### Lite Data Stack (Postgres)
 

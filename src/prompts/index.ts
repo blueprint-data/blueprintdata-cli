@@ -14,14 +14,17 @@ export interface NewProjectOptions {
 export const handleNewProject = async (options: NewProjectOptions) => {
   p.intro('Create a new BlueprintData project');
 
-  const stackType: StackType = (options.stack as StackType) || (await promptStackType());
+  const stackChoice: StackType = (options.stack as StackType) || (await promptStackType());
+  const stackType: StackType = stackChoice === 'lite' ? 'lite-bigquery' : stackChoice;
 
   const projectName = options.projectName || (await promptProjectName());
 
   const storageType: StorageType =
     stackType === 'lite-postgres'
       ? 'postgres'
-      : (options.storage as StorageType) || (await promptStorage());
+      : stackType === 'lite-bigquery'
+        ? 'bigquery'
+        : (options.storage as StorageType) || (await promptStorage());
 
   const config: ProjectConfig = {
     stackType,
