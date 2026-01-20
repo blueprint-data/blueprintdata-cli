@@ -1,6 +1,6 @@
 {
   "name": "blueprintdata-cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "CLI tool to scaffold data stack projects",
   "bin": {
     "blueprintdata": "./dist/index.js"
