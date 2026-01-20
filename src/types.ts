@@ -1,4 +1,4 @@
-export type StackType = 'lite' | 'lite-postgres' | 'aws';
+export type StackType = 'lite' | 'lite-bigquery' | 'lite-postgres' | 'aws';
 
 export type StorageType = 'postgres' | 'bigquery';
 

@@ -9,10 +9,16 @@ export const LOCAL_TEMPLATE_DIR = path.join(process.cwd(), 'templates');
 
 export const TEMPLATE_MAPPINGS: Record<StackType, TemplateConfig> = {
   lite: {
-    name: 'lite-data-stack',
+    name: 'lite-data-stack-bigquery',
     repoUrl: REPO_URL,
     branch: DEFAULT_BRANCH,
-    path: 'templates/lite-data-stack',
+    path: 'templates/lite-data-stack-bigquery',
+  },
+  'lite-bigquery': {
+    name: 'lite-data-stack-bigquery',
+    repoUrl: REPO_URL,
+    branch: DEFAULT_BRANCH,
+    path: 'templates/lite-data-stack-bigquery',
   },
   'lite-postgres': {
     name: 'lite-data-stack-postgres',
