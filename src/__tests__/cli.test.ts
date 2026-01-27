@@ -7,9 +7,9 @@ describe('CLI', () => {
     expect(cli.name()).toBe('blueprintdata');
   });
 
-  it('has new command', () => {
+  it('has template command', () => {
     const cli = createCli();
-    const newCmd = cli.commands.find((cmd) => cmd.name() === 'new');
-    expect(newCmd).toBeDefined();
+    const templateCmd = cli.commands.find((cmd) => cmd.name() === 'template');
+    expect(templateCmd).toBeDefined();
   });
 });

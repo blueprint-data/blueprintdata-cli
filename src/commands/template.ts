@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { handleNewProject } from '../prompts/index.js';
 
-export const newCommand = new Command('new')
-  .description('Create a new BlueprintData project')
+export const templateCommand = new Command('template')
+  .description('Create a new BlueprintData project from template')
   .argument('[project-name]', 'Name of the project')
   .option('--stack <type>', 'Stack type (lite-bigquery, lite-postgres, aws)')
   .option('--storage <type>', 'Storage type (postgres, bigquery)')

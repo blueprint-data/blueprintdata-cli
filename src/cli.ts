@@ -1,5 +1,6 @@
 import { Command } from 'commander';
-import { newCommand } from './commands/new.js';
+import { templateCommand } from './commands/template.js';
+import { analyticsCommand } from './commands/analytics/index.js';
 
 export const createCli = () => {
   const program = new Command();
@@ -9,7 +10,8 @@ export const createCli = () => {
     .description('CLI tool to scaffold data stack projects')
     .version('0.1.0');
 
-  program.addCommand(newCommand);
+  program.addCommand(templateCommand);
+  program.addCommand(analyticsCommand);
 
   return program;
 };
