@@ -1,9 +1,18 @@
 import { Command } from 'commander';
+import { DEFAULT_CONFIG } from '../../config/defaults.js';
 
 export const chatCommand = new Command('chat')
   .description('Start analytics chat interface (UI and/or Slack)')
-  .option('--port <port>', 'UI server port (default: 3000)', '3000')
-  .option('--gateway-port <port>', 'Gateway WebSocket port (default: 8080)', '8080')
+  .option(
+    '--port <port>',
+    `UI server port (default: ${DEFAULT_CONFIG.interface.uiPort})`,
+    String(DEFAULT_CONFIG.interface.uiPort)
+  )
+  .option(
+    '--gateway-port <port>',
+    `Gateway WebSocket port (default: ${DEFAULT_CONFIG.interface.gatewayPort})`,
+    String(DEFAULT_CONFIG.interface.gatewayPort)
+  )
   .option('--ui-only', 'Start UI interface only (skip Slack)')
   .action(async (options) => {
     try {

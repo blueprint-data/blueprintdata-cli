@@ -1,6 +1,7 @@
 import pg from 'pg';
 import { BaseWarehouseConnector, TableSchema, ColumnInfo, QueryResult } from './connection.js';
 import { WarehouseConnection } from '../types.js';
+import { DEFAULT_CONFIG } from '../config/defaults.js';
 
 const { Pool } = pg;
 
@@ -21,9 +22,9 @@ export class PostgresConnector extends BaseWarehouseConnector {
       user: connection.user,
       password: connection.password,
       database: connection.database,
-      max: 10, // Maximum pool size
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      max: DEFAULT_CONFIG.warehouse.poolSize,
+      idleTimeoutMillis: DEFAULT_CONFIG.warehouse.connectionTimeout,
+      connectionTimeoutMillis: DEFAULT_CONFIG.warehouse.connectionTimeout,
     });
   }
 

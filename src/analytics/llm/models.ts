@@ -1,4 +1,5 @@
 import { LLMProvider } from '../../types.js';
+import modelsConfig from '../../../config/llm-models.json';
 
 export interface LLMModel {
   id: string;
@@ -9,97 +10,18 @@ export interface LLMModel {
   costPer1MOutputTokens: number;
   speed: 'fast' | 'balanced' | 'slow';
   capabilities: string[];
-  recommended?: 'chat' | 'profiling' | 'general';
+  recommended?: 'chat' | 'profiling' | 'general' | null;
 }
 
-/**
- * Anthropic Claude models
- */
-export const ANTHROPIC_MODELS: LLMModel[] = [
-  {
-    id: 'claude-3-5-sonnet-20241022',
-    name: 'Claude 3.5 Sonnet',
-    provider: 'anthropic',
-    contextWindow: 200000,
-    costPer1MInputTokens: 3.0,
-    costPer1MOutputTokens: 15.0,
-    speed: 'balanced',
-    capabilities: ['analysis', 'reasoning', 'code', 'long-context'],
-    recommended: 'general',
-  },
-  {
-    id: 'claude-3-5-haiku-20241022',
-    name: 'Claude 3.5 Haiku',
-    provider: 'anthropic',
-    contextWindow: 200000,
-    costPer1MInputTokens: 1.0,
-    costPer1MOutputTokens: 5.0,
-    speed: 'fast',
-    capabilities: ['analysis', 'speed', 'cost-effective'],
-    recommended: 'profiling',
-  },
-  {
-    id: 'claude-3-opus-20240229',
-    name: 'Claude 3 Opus',
-    provider: 'anthropic',
-    contextWindow: 200000,
-    costPer1MInputTokens: 15.0,
-    costPer1MOutputTokens: 75.0,
-    speed: 'slow',
-    capabilities: ['analysis', 'reasoning', 'complex-tasks', 'highest-quality'],
-    recommended: undefined,
-  },
-];
+export const ANTHROPIC_MODELS: LLMModel[] = modelsConfig.anthropic.map((model) => ({
+  ...model,
+  recommended: model.recommended || undefined,
+})) as LLMModel[];
 
-/**
- * OpenAI GPT models
- */
-export const OPENAI_MODELS: LLMModel[] = [
-  {
-    id: 'gpt-4o',
-    name: 'GPT-4o',
-    provider: 'openai',
-    contextWindow: 128000,
-    costPer1MInputTokens: 2.5,
-    costPer1MOutputTokens: 10.0,
-    speed: 'balanced',
-    capabilities: ['analysis', 'vision', 'code', 'multimodal'],
-    recommended: 'general',
-  },
-  {
-    id: 'gpt-4o-mini',
-    name: 'GPT-4o Mini',
-    provider: 'openai',
-    contextWindow: 128000,
-    costPer1MInputTokens: 0.15,
-    costPer1MOutputTokens: 0.6,
-    speed: 'fast',
-    capabilities: ['analysis', 'speed', 'cost-effective'],
-    recommended: 'profiling',
-  },
-  {
-    id: 'gpt-4-turbo',
-    name: 'GPT-4 Turbo',
-    provider: 'openai',
-    contextWindow: 128000,
-    costPer1MInputTokens: 10.0,
-    costPer1MOutputTokens: 30.0,
-    speed: 'balanced',
-    capabilities: ['analysis', 'reasoning', 'code'],
-    recommended: undefined,
-  },
-  {
-    id: 'gpt-3.5-turbo',
-    name: 'GPT-3.5 Turbo',
-    provider: 'openai',
-    contextWindow: 16385,
-    costPer1MInputTokens: 0.5,
-    costPer1MOutputTokens: 1.5,
-    speed: 'fast',
-    capabilities: ['speed', 'cost-effective'],
-    recommended: undefined,
-  },
-];
+export const OPENAI_MODELS: LLMModel[] = modelsConfig.openai.map((model) => ({
+  ...model,
+  recommended: model.recommended || undefined,
+})) as LLMModel[];
 
 /**
  * Get all models for a specific provider

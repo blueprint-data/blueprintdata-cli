@@ -74,20 +74,3 @@ export abstract class BaseWarehouseConnector {
     }
   }
 }
-
-/**
- * Factory function to create warehouse connector
- */
-export const createWarehouseConnector = async (
-  connection: WarehouseConnection
-): Promise<BaseWarehouseConnector> => {
-  if (connection.type === 'bigquery') {
-    const { BigQueryConnector } = await import('./bigquery.js');
-    return new BigQueryConnector(connection);
-  } else if (connection.type === 'postgres') {
-    const { PostgresConnector } = await import('./postgres.js');
-    return new PostgresConnector(connection);
-  } else {
-    throw new Error(`Unsupported warehouse type: ${connection.type}`);
-  }
-};

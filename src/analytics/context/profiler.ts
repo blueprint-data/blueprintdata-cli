@@ -6,6 +6,7 @@ import {
   CompanyContext,
   DbtModelMetadata,
   ProfileSummary,
+  ProfileError,
 } from '../../types.js';
 import { StatisticsGatherer } from './statistics.js';
 import { LLMEnricher } from './enricher.js';
@@ -143,13 +144,12 @@ export class WarehouseProfiler {
     success: boolean;
     duration: number;
     tokensUsed?: { input: number; output: number };
-    error?: any;
+    error?: ProfileError;
   }> {
     const startTime = Date.now();
     console.log(`\n  Profiling ${schemaName}.${tableName}...`);
 
-    try {
-      // Get basic schema
+    // Get basic schema
       console.log(`    [1/4] Fetching table schema...`);
       const schemaStart = Date.now();
       const schema = await this.connector.getTableSchema(schemaName, tableName);
@@ -238,9 +238,6 @@ export class WarehouseProfiler {
         console.log(`  ✓ Complete (${(duration / 1000).toFixed(1)}s total)\n`);
         return { success: true, duration };
       }
-    } catch (error) {
-      throw error;
-    }
   }
 
   /**

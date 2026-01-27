@@ -3,7 +3,7 @@ import path from 'path';
 import { AnalyticsConfig } from '../../types.js';
 import { BaseWarehouseConnector } from '../../warehouse/connection.js';
 import { WarehouseProfiler } from './profiler.js';
-import { DbtScanner } from './scanner.js';
+import { DbtScanner, DbtScanResult, DbtModel } from './scanner.js';
 import { LLMClient } from '../llm/client.js';
 import { LLMEnricher } from './enricher.js';
 import { DbtIntegration } from './dbt-integration.js';
@@ -154,7 +154,7 @@ Remember: You are a helpful assistant that empowers users to work with their dat
    */
   private async generateSummary(
     contextDir: string,
-    scanResult: any,
+    scanResult: DbtScanResult,
     enricher?: LLMEnricher
   ): Promise<void> {
     const { projectPath, config } = this.options;
@@ -175,13 +175,13 @@ Remember: You are a helpful assistant that empowers users to work with their dat
         console.log('Generating LLM-enriched project summary...');
 
         // Analyze scan result for layers
-        const stagingModels = scanResult.models.filter((m: any) =>
+        const stagingModels = scanResult.models.filter((m: DbtModel) =>
           m.relativePath.includes('staging')
         ).length;
-        const intermediateModels = scanResult.models.filter((m: any) =>
+        const intermediateModels = scanResult.models.filter((m: DbtModel) =>
           m.relativePath.includes('intermediate')
         ).length;
-        const martsModels = scanResult.models.filter((m: any) =>
+        const martsModels = scanResult.models.filter((m: DbtModel) =>
           m.relativePath.includes('marts')
         ).length;
 
@@ -189,11 +189,11 @@ Remember: You are a helpful assistant that empowers users to work with their dat
         const domains = Array.from(
           new Set(
             scanResult.models
-              .map((m: any) => {
+              .map((m: DbtModel) => {
                 const parts = m.name.split('_');
                 return parts.length > 2 ? parts[1] : null;
               })
-              .filter((d: any) => d !== null)
+              .filter((d: string | null): d is string => d !== null)
           )
         ) as string[];
 
@@ -274,7 +274,7 @@ To work with this project:
    */
   private async generateModelling(
     contextDir: string,
-    scanResult: any,
+    scanResult: DbtScanResult,
     enricher?: LLMEnricher
   ): Promise<void> {
     const { config } = this.options;

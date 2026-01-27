@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import { loadConfig, isAnalyticsInitialized } from '../../utils/config.js';
-import { createWarehouseConnector } from '../../warehouse/connection.js';
+import { createWarehouseConnector } from '../../warehouse/factory.js';
 import { ContextBuilder } from '../../analytics/context/builder.js';
 
 export const syncCommand = new Command('sync')
