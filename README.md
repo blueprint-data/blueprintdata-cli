@@ -113,11 +113,63 @@ bun run typecheck
 
 ## Contributing
 
-1. Fork repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to branch
-5. Create a Pull Request
+We use a staging/pre-release workflow for this project:
+
+### Branch Structure
+
+- **main**: Stable releases (e.g., 1.0.0, 1.1.0)
+- **staging**: Pre-releases for testing (e.g., 1.1.0-beta.1)
+- **feature branches**: Development work
+
+### Contribution Flow
+
+1. Fork the repository
+2. Create your feature branch from `staging`:
+
+   ```bash
+   git checkout staging
+   git pull origin staging
+   git checkout -b feat/your-feature-name
+   ```
+
+3. Make your changes and commit using conventional commits:
+
+   ```bash
+   git commit -m "feat: add new feature"
+   git commit -m "fix: resolve bug"
+   git commit -m "chore: update dependencies"
+   ```
+
+4. Push to your fork and create a Pull Request targeting `staging`:
+
+   ```bash
+   git push origin feat/your-feature-name
+   ```
+
+5. Once your PR is merged to `staging`, a beta version will be automatically published to npm (e.g., `1.1.0-beta.1`)
+
+6. When ready for a stable release, a maintainer will create a PR from `staging` to `main`
+
+7. Merging to `main` triggers a stable release to npm
+
+### Commit Message Format
+
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+- `feat:` - New features (triggers minor version bump)
+- `fix:` - Bug fixes (triggers patch version bump)
+- `chore:` - Maintenance tasks
+- `docs:` - Documentation changes
+- `refactor:` - Code refactoring
+- `test:` - Test updates
+- `ci:` - CI/CD changes
+
+### Release Process
+
+Releases are automated using semantic-release:
+
+- Push to `staging` → Publishes pre-release version (e.g., `1.1.0-beta.1`)
+- Push to `main` → Publishes stable version (e.g., `1.1.0`)
 
 ## License
 

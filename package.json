@@ -93,7 +93,11 @@
   ],
   "release": {
     "branches": [
-      "main"
+      "main",
+      {
+        "name": "staging",
+        "prerelease": "beta"
+      }
     ],
     "plugins": [
       "@semantic-release/commit-analyzer",
@@ -103,16 +107,6 @@
         "@semantic-release/npm",
         {
           "provenance": true
-        }
-      ],
-      [
-        "@semantic-release/git",
-        {
-          "assets": [
-            "package.json",
-            "CHANGELOG.md"
-          ],
-          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
         }
       ],
       "@semantic-release/github"
