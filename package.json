@@ -1,115 +1,63 @@
 {
-  "name": "blueprintdata-cli",
-  "version": "1.1.0",
-  "description": "CLI tool to scaffold data stack projects",
-  "bin": {
-    "blueprintdata": "./dist/index.js"
-  },
-  "files": [
-    "dist"
+  "name": "blueprintdata",
+  "private": true,
+  "version": "2.0.0",
+  "description": "BlueprintData CLI and Analytics Agent Platform",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/@blueprintdata/*"
   ],
   "scripts": {
-    "build": "bun run build-bun.ts && chmod +x dist/index.js",
-    "build:node": "bun run build.ts && chmod +x dist/index.js",
-    "dev": "bun run build-bun.ts --watch",
+    "build": "bun run build:packages && bun run build:apps",
+    "build:packages": "tsc --build tsconfig.json",
+    "build:apps": "bun run --filter './apps/**' build",
+    "build:cli": "bun run --filter 'blueprintdata-cli' build",
+    "build:web": "bun run --filter '@blueprintdata/web' build",
+    "dev": "bun run --filter './apps/**' dev",
+    "dev:cli": "bun run --filter 'blueprintdata-cli' dev",
+    "dev:web": "bun run --filter '@blueprintdata/web' dev",
     "test": "bun test",
-    "test:ui": "vitest --ui",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
+    "test:packages": "bun test packages/",
+    "test:apps": "bun test apps/",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "bun run build",
-    "prepare": "husky"
-  },
-  "keywords": [
-    "cli",
-    "data-stack",
-    "meltano",
-    "dbt",
-    "elt",
-    "scaffold"
-  ],
-  "author": "BlueprintData",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/blueprint-data/blueprintdata-cli.git"
-  },
-  "homepage": "https://github.com/blueprint-data/blueprintdata-cli#readme",
-  "bugs": {
-    "url": "https://github.com/blueprint-data/blueprintdata-cli/issues"
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
-    "@clack/prompts": "^0.7.0",
-    "@google-cloud/bigquery": "^7.0.0",
-    "@hono/node-server": "^1.13.0",
-    "@slack/bolt": "^4.1.0",
-    "chalk": "^5.3.0",
-    "chart.js": "^4.4.0",
-    "commander": "^12.0.0",
-    "dotenv": "^16.4.0",
-    "execa": "^8.0.1",
-    "fs-extra": "^11.2.0",
-    "giget": "^1.2.3",
-    "handlebars": "^4.7.8",
-    "hono": "^4.6.0",
-    "jsonwebtoken": "^9.0.0",
-    "marked": "^14.1.0",
-    "openai": "^4.67.0",
-    "pg": "^8.12.0",
-    "validate-npm-package-name": "^5.0.0",
-    "ws": "^8.18.0",
-    "yaml": "^2.6.0",
-    "zod": "^3.23.0"
+    "typecheck:packages": "bun run --filter './packages/**' typecheck",
+    "typecheck:apps": "bun run --filter './apps/**' typecheck",
+    "clean": "bun run --filter '*' clean && rm -rf node_modules",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "bun run build && changeset publish",
+    "link": "bun run link:packages && bun run link:cli",
+    "link:packages": "cd packages/@blueprintdata/models && bun link && cd ../errors && bun link && cd ../config && bun link && cd ../warehouse && bun link && cd ../analytics && bun link && cd ../gateway && bun link",
+    "link:cli": "cd apps/cli && bun link",
+    "unlink": "bun run unlink:packages && bun run unlink:cli",
+    "unlink:packages": "cd packages/@blueprintdata/models && bun unlink && cd ../errors && bun unlink && cd ../config && bun unlink && cd ../warehouse && bun unlink && cd ../analytics && bun unlink && cd ../gateway && bun unlink",
+    "unlink:cli": "cd apps/cli && bun unlink",
+    "local-install": "bun install && bun run build:packages && bun run link",
+    "link:npm": "./scripts/setup-npm-links.sh",
+    "unlink:npm": "./scripts/unlink-npm.sh",
+    "local-install:npm": "npm install && npm run build:packages && npm run link:npm",
+    "verify-local": "node scripts/verify-local.js",
+    "watch": "bun run --filter './packages/**' --filter './apps/**' dev"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.27.0",
     "@commitlint/cli": "^20.3.1",
     "@commitlint/config-conventional": "^20.3.1",
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
     "@types/bun": "latest",
-    "@types/fs-extra": "^11.0.4",
-    "@types/jsonwebtoken": "^9.0.0",
-    "@types/pg": "^8.11.0",
-    "@types/validate-npm-package-name": "^4.0.0",
-    "@types/ws": "^8.5.0",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
-    "husky": "^9.1.7",
     "prettier": "^3.2.4",
-    "semantic-release": "^25.0.2",
     "typescript": "^5.3.3",
-    "vitest": "^1.2.0"
+    "validate-npm-package-name": "^7.0.2"
   },
-  "type": "module",
   "engines": {
-    "node": ">=18.0.0"
-  },
-  "trustedDependencies": [
-    "esbuild"
-  ],
-  "release": {
-    "branches": [
-      "main",
-      {
-        "name": "staging",
-        "prerelease": "beta"
-      }
-    ],
-    "plugins": [
-      "@semantic-release/commit-analyzer",
-      "@semantic-release/release-notes-generator",
-      "@semantic-release/changelog",
-      [
-        "@semantic-release/npm",
-        {
-          "provenance": true
-        }
-      ],
-      "@semantic-release/github"
-    ]
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
   }
 }
