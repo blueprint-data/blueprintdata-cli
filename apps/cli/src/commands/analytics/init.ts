@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import { validateLLMApiKey } from '../../utils/env.js';
-import { LLMProvider, CompanyContext } from '../../types.js';
+import { LLMProvider, CompanyContext } from '@blueprintdata/models';
 import {
   getModelsForProvider,
   getDefaultModel,

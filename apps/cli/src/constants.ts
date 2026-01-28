@@ -1,4 +1,4 @@
-import { StackType, StorageType, TemplateConfig } from './types.js';
+import { StackType, StorageType, TemplateConfig } from '@blueprintdata/models';
 import path from 'path';
 
 export const REPO_URL = 'github:blueprint-data/blueprintdata-cli';

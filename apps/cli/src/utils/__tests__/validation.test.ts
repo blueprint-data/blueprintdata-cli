@@ -92,7 +92,7 @@ describe('Validation Utils', () => {
       reservedNames.forEach((name) => {
         const result = validateProjectName(name);
         expect(result.valid).toBe(false);
-        expect(result.error).toContain('blacklisted');
+        expect(result.error).toContain('not a valid package name');
       });
     });
 
