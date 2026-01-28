@@ -1,1 +1,27 @@
-bun test
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running pre-commit checks..."
+
+# 1. Typecheck (fast, catches type errors)
+echo "→ Typechecking..."
+bun run typecheck || {
+  echo "❌ Typecheck failed. Fix type errors before committing."
+  exit 1
+}
+
+# 2. Lint (checks code style)
+echo "→ Linting..."
+bun run lint || {
+  echo "❌ Lint failed. Run 'bun run lint:fix' to auto-fix."
+  exit 1
+}
+
+# 3. Tests (catches breaking changes)
+echo "→ Running tests..."
+bun test || {
+  echo "❌ Tests failed. Fix failing tests before committing."
+  exit 1
+}
+
+echo "✅ All pre-commit checks passed!"

@@ -21,7 +21,6 @@ sourcemap = true
 
 [test]
 # Test configuration
-preload = ["./vitest.config.ts"]
 
 
 

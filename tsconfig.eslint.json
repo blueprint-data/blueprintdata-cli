@@ -1,13 +1,20 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "."
+    "noEmit": true
   },
   "include": [
-    "src/**/*.ts",
-    "build.ts",
-    "build-bun.ts",
-    "tsup.config.ts",
-    "vitest.config.ts"
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "scripts/**/*.js",
+    "*.config.ts"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "**/*.test.ts",
+    "**/__tests__/**"
   ]
 }

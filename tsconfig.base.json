@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@blueprintdata/models": ["./packages/@blueprintdata/models/src"],
+      "@blueprintdata/models/*": ["./packages/@blueprintdata/models/src/*"],
+      "@blueprintdata/errors": ["./packages/@blueprintdata/errors/src"],
+      "@blueprintdata/errors/*": ["./packages/@blueprintdata/errors/src/*"],
+      "@blueprintdata/config": ["./packages/@blueprintdata/config/src"],
+      "@blueprintdata/config/*": ["./packages/@blueprintdata/config/src/*"],
+      "@blueprintdata/warehouse": ["./packages/@blueprintdata/warehouse/src"],
+      "@blueprintdata/warehouse/*": ["./packages/@blueprintdata/warehouse/src/*"],
+      "@blueprintdata/analytics": ["./packages/@blueprintdata/analytics/src"],
+      "@blueprintdata/analytics/*": ["./packages/@blueprintdata/analytics/src/*"],
+      "@blueprintdata/gateway": ["./packages/@blueprintdata/gateway/src"],
+      "@blueprintdata/gateway/*": ["./packages/@blueprintdata/gateway/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build"]
+}

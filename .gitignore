@@ -7,3 +7,7 @@ dist/
 coverage/
 *.tsbuildinfo
 plan.md
+
+# Analytics agent context cache
+agent-context/.cache/
+.blueprintdata/
