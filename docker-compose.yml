@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  blueprintdata:
+    build:
+      context: .
+      target: web
+    ports:
+      - '3000:3000' # Web UI
+      - '8080:8080' # Gateway WebSocket
+    volumes:
+      # Mount your dbt project
+      - ./my-dbt-project:/project:rw
+      # Mount dbt profiles
+      - ~/.dbt:/root/.dbt:ro
+    environment:
+      # API Keys (or use .env file)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Ports
+      - UI_PORT=3000
+      - GATEWAY_PORT=8080
+      # Project path
+      - DBT_PROJECT_PATH=/project
+    working_dir: /project
+    command: ['bun', 'run', 'cli', 'analytics', 'chat']

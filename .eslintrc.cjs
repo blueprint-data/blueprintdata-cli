@@ -13,13 +13,5 @@ module.exports = {
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
   },
-  ignorePatterns: ['dist', 'node_modules', '*.js'],
-  overrides: [
-    {
-      files: ['tsup.config.ts', 'vitest.config.ts'],
-      parserOptions: {
-        project: null,
-      },
-    },
-  ],
+  ignorePatterns: ['dist', 'node_modules', '*.js', '**/__tests__/**', '**/*.test.ts', '**/__mocks__/**'],
 };
