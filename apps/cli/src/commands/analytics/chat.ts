@@ -1,5 +1,7 @@
 import { Command } from 'commander';
 import { DEFAULT_CONFIG } from '@blueprintdata/config';
+import { ChatService } from '../../services/analytics/ChatService';
+import { logger } from '../../utils/logger';
 
 export const chatCommand = new Command('chat')
   .description('Start analytics chat interface (UI and/or Slack)')
@@ -14,23 +16,23 @@ export const chatCommand = new Command('chat')
     String(DEFAULT_CONFIG.interface.gatewayPort)
   )
   .option('--ui-only', 'Start UI interface only (skip Slack)')
+  .option('--no-open', 'Do not open browser automatically')
   .action(async (options) => {
     try {
-      console.log('Analytics chat command - Coming soon!');
-      console.log('Options:', options);
-      // TODO: Implement in Phase 6
-      // - Start gateway server
-      // - Start UI server
-      // - Open browser
-      // - Optionally start Slack bot
+      const chatService = new ChatService({
+        uiPort: parseInt(options.port),
+        gatewayPort: parseInt(options.gatewayPort),
+        noOpen: options.noOpen,
+      });
+
+      await chatService.start();
     } catch (error) {
-      console.error();
+      logger.error('Chat command failed: ' + error);
       if (error instanceof Error) {
         console.error(`Error: ${error.message}`);
       } else {
         console.error('Error: An unknown error occurred');
       }
-      console.error();
       process.exit(1);
     }
   });

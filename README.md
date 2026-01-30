@@ -1,162 +1,245 @@
 # BlueprintData CLI
 
-A comprehensive CLI tool for data teams that provides:
-1. **Project Scaffolding**: Quickly scaffold data stack projects with pre-configured templates
-2. **Analytics Agent**: LLM-powered analytics assistant for dbt projects
+A comprehensive CLI tool for data teams that provides project scaffolding and an AI-powered analytics agent for dbt projects.
 
-Built with Bun for maximum performance, runs on Node.js for compatibility.
+[![npm version](https://img.shields.io/npm/v/blueprintdata-cli.svg)](https://www.npmjs.com/package/blueprintdata-cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Installation
-
-```bash
-npm install -g blueprintdata-cli
-```
-
-Or use directly with npx:
-
-```bash
-npx blueprintdata-cli new
-```
-
-## Prerequisites
-
-- Node.js >= 18.0.0 (for running the CLI)
-- Bun >= 1.0.0 (for development only)
+---
 
 ## Features
 
 ### 1. Project Scaffolding
 
-Quickly scaffold complete data stack projects with:
-- Pre-configured Meltano for data extraction
-- dbt for data transformation
-- GitHub Actions for CI/CD
-- Support for BigQuery and Postgres
+Quickly scaffold complete data stack projects with pre-configured templates:
 
-### 2. Analytics Agent (NEW)
+- **Meltano** for data extraction
+- **dbt** for data transformation
+- **GitHub Actions** for CI/CD
+- **Support** for BigQuery and PostgreSQL
 
-An LLM-powered assistant that:
-- Automatically profiles your dbt models and warehouse tables
+[→ Learn more about Templates](docs/features/TEMPLATES.md)
+
+### 2. Analytics Agent
+
+An AI-powered assistant for your dbt project:
+
+- Automatically profiles your data warehouse tables
 - Generates rich documentation with business context
 - Provides intelligent insights about your data
 - Supports Anthropic Claude and OpenAI GPT models
+- Interactive chat interface (coming soon)
+
+[→ Learn more about Analytics](docs/features/ANALYTICS.md)
+
+---
+
+## Installation
+
+### Global Installation
+
+```bash
+npm install -g blueprintdata-cli
+```
+
+### Using npx
+
+```bash
+npx blueprintdata-cli new my-project
+```
+
+### Prerequisites
+
+- **Node.js** >= 18.0.0
+- **Python** >= 3.10 (for dbt projects)
+
+---
+
+## Quick Start
+
+### For End Users
+
+#### Create a New Data Project
+
+```bash
+# Interactive mode
+blueprintdata new
+
+# With options
+blueprintdata new my-project --stack lite-bigquery
+```
+
+Available templates:
+- `lite-postgres` - PostgreSQL data stack
+- `lite-bigquery` - BigQuery data stack
+
+#### Initialize Analytics Agent
+
+```bash
+# Navigate to your dbt project
+cd my-dbt-project
+
+# Initialize analytics
+blueprintdata analytics init
+
+# Sync after changes
+blueprintdata analytics sync
+
+# Start chat interface (coming soon)
+blueprintdata analytics chat
+```
+
+[→ See full usage guide](#usage)
+
+### For Contributors
+
+#### Development Setup
+
+```bash
+# Clone repository
+git clone https://github.com/your-org/blueprintdata-cli.git
+cd blueprintdata-cli
+
+# Install dependencies
+bun install
+
+# Build and link locally
+bun run local-install
+
+# Verify
+blueprintdata --version
+```
+
+[→ See full development guide](docs/DEVELOPMENT.md)
+
+---
 
 ## Usage
 
 ### Project Scaffolding
 
-#### Create a New Project
+#### Create New Project
 
 ```bash
-blueprintdata new [project-name]
+blueprintdata new [project-name] [options]
+
+Options:
+  --stack <type>  Stack type (lite-postgres, lite-bigquery)
+  -h, --help      Display help
 ```
 
-The CLI will prompt you for:
-
-- Stack type (Lite Data Stack - BigQuery, Lite Data Stack - Postgres, AWS Data Stack)
-- Project name
-- Storage type (only if the stack supports multiple storages)
-
-### Options
-
+**Example**:
 ```bash
-blueprintdata new my-project --stack lite-bigquery
-# or
-blueprintdata new my-project --stack lite-postgres
+blueprintdata new analytics-stack --stack lite-bigquery
 ```
 
-- `--stack <type>`: Stack type (lite-bigquery, lite-postgres, aws; `lite` remains an alias for lite-bigquery)
-- `--storage <type>`: Storage type (postgres, bigquery) — only for stacks that allow a manual storage choice
+This creates a complete project with:
+- Meltano configuration for extraction
+- dbt project for transformation
+- GitHub Actions workflows for CI/CD
+- Sandbox dataset strategy
+- Slim CI for efficient deployments
 
-## Available Stacks
-
-### Lite Data Stack (BigQuery)
-
-The Lite Data Stack (BigQuery) includes:
-
-- **Extraction**: Meltano with tap-github + target-bigquery
-- **Transformation**: dbt with BigQuery
-- **CI/CD**: GitHub Actions workflows
-- **Storage**: BigQuery
-
-### Lite Data Stack (Postgres)
-
-The Lite Data Stack (Postgres) includes:
-
-- **Extraction**: Meltano with tap-csv
-- **Transformation**: dbt with Postgres
-- **CI/CD**: GitHub Actions workflows
-- **Storage**: PostgreSQL only (no storage prompt)
-
-#### Project Structure
-
-After creating a project, you'll get:
-
-```
-my-project/
-├── extraction/          # Meltano project
-│   ├── meltano.yml     # Configuration
-│   └── .venv/          # Virtual environment
-├── transform/          # dbt project
-│   ├── dbt_project.yml # Configuration
-│   ├── profiles.yml    # Database profiles
-│   └── models/         # dbt models
-└── .github/
-    └── workflows/      # CI/CD
-```
+[→ Full template documentation](docs/features/TEMPLATES.md)
 
 ### Analytics Agent
 
-The analytics agent helps you understand and work with your dbt project using AI-powered analysis.
-
-#### Initialize Analytics Agent
-
-Navigate to your dbt project directory and run:
+#### Initialize
 
 ```bash
 cd your-dbt-project
 blueprintdata analytics init
 ```
 
-The initialization process will:
-1. Validate your dbt project structure
-2. Connect to your data warehouse (BigQuery or Postgres)
-3. Select your LLM provider (Anthropic or OpenAI)
-4. Collect company context (optional)
-5. Profile your warehouse tables
-6. Generate agent context documentation
+The initialization process:
+1. Validates your dbt project
+2. Connects to your data warehouse
+3. Selects LLM models
+4. Collects company context (optional)
+5. Profiles warehouse tables
+6. Generates agent context documentation
 
-#### Sync Agent Context
-
-After making changes to your dbt models:
+#### Sync
 
 ```bash
-blueprintdata analytics sync
-```
+blueprintdata analytics sync [options]
 
 Options:
-- `--force`: Force full re-sync
-- `--profiles-only`: Only re-profile tables without updating docs
-- `--select <models>`: Sync specific models (comma-separated)
-- `--target <environment>`: Specify dbt target environment
-
-#### Generated Context
-
-The agent creates an `agent-context/` directory containing:
-
-```
-agent-context/
-├── system_prompt.md    # Agent instructions and capabilities
-├── summary.md          # Project overview and business context
-├── modelling.md        # dbt model catalog with lineage
-└── models/             # Detailed table profiles
-    ├── schema_table1.md
-    └── schema_table2.md
+  --force            Force full re-sync
+  --profiles-only    Only re-profile tables
+  --select <models>  Sync specific models
+  --target <env>     Specify dbt target
 ```
 
-#### Configuration
+**Examples**:
+```bash
+# Sync all changed models
+blueprintdata analytics sync
 
-Analytics configuration is stored in `.blueprintdata/config.json`:
+# Sync specific models
+blueprintdata analytics sync --select marts.finance.*
+
+# Full re-sync
+blueprintdata analytics sync --force
+```
+
+#### Chat (Coming Soon)
+
+```bash
+blueprintdata analytics chat
+```
+
+Starts an interactive chat interface with:
+- Natural language queries
+- SQL generation and execution
+- Chart generation
+- Context search
+- Session management
+
+[→ Full analytics documentation](docs/features/ANALYTICS.md)
+
+### Authentication (For Chat)
+
+```bash
+# Register new user
+blueprintdata auth register
+
+# Login
+blueprintdata auth login
+
+# Check status
+blueprintdata auth status
+
+# Logout
+blueprintdata auth logout
+```
+
+---
+
+## Project Structure
+
+```
+my-project/
+├── extraction/          # Meltano project
+│   ├── meltano.yml     # Configuration
+│   └── scripts/        # Setup scripts
+├── transform/          # dbt project
+│   ├── dbt_project.yml # Configuration
+│   ├── models/         # dbt models
+│   │   ├── staging/    # Staging layer
+│   │   └── production/ # Production layer
+│   └── scripts/        # Setup scripts
+└── .github/
+    └── workflows/      # CI/CD workflows
+```
+
+---
+
+## Configuration
+
+### Analytics Configuration
+
+After initialization, configuration is stored in `.blueprintdata/config.json`:
 
 ```json
 {
@@ -172,131 +255,283 @@ Analytics configuration is stored in `.blueprintdata/config.json`:
     "profilingModel": "claude-3-5-haiku-20241022"
   },
   "warehouse": {
-    "type": "postgres",
+    "type": "bigquery",
     "connection": { ... }
   },
-  "interface": {
-    "uiPort": 3000,
-    "gatewayPort": 8080
+  "company": {
+    "name": "Your Company",
+    "industry": "E-commerce",
+    ...
   }
 }
 ```
 
-#### Environment Variables
-
-Set LLM API keys in your environment:
+### Environment Variables
 
 ```bash
+# LLM API Keys
 export ANTHROPIC_API_KEY=sk-ant-...
-# or
 export OPENAI_API_KEY=sk-...
-```
 
-Optional configuration:
-
-```bash
+# Analytics UI (optional)
 export UI_PORT=3000
 export GATEWAY_PORT=8080
 ```
 
+---
+
 ## Documentation
 
-- [Architecture Guide](docs/ARCHITECTURE.md) - System architecture and design patterns
-- [API Reference](docs/API.md) - Complete API documentation for services
-- [Testing Guide](docs/TESTING_GUIDE.md) - Testing conventions and examples
-- [Analytics Init Guide](docs/ANALYTICS_INIT.md) - Using the analytics agent features
-- [Contributing Guide](CONTRIBUTING.md) - Development guidelines and contribution workflow
+### For End Users
+
+- **[Templates Feature](docs/features/TEMPLATES.md)** - Project scaffolding guide
+- **[Analytics Feature](docs/features/ANALYTICS.md)** - Analytics agent guide
+
+### For Contributors
+
+- **[Architecture](docs/ARCHITECTURE.md)** - System architecture and design patterns
+- **[Development](docs/DEVELOPMENT.md)** - Local development and testing
+- **[Publishing](docs/PUBLISHING.md)** - Release process and versioning
+
+### Roadmap
+
+- **[ROADMAP.md](ROADMAP.md)** - High-level feature roadmap
+- **[DETAILED_ROADMAP.md](DETAILED_ROADMAP.md)** - Detailed task breakdown
+
+---
+
+## Contributing
+
+We welcome contributions! Here's how to get started:
+
+### Quick Start
+
+```bash
+# 1. Fork and clone
+git clone https://github.com/your-username/blueprintdata-cli.git
+cd blueprintdata-cli
+
+# 2. Install dependencies
+bun install
+
+# 3. Build and link
+bun run local-install
+
+# 4. Create feature branch
+git checkout -b feat/your-feature
+
+# 5. Make changes and test
+bun test
+bun run typecheck
+bun run lint
+
+# 6. Create changeset
+bun run changeset
+
+# 7. Commit and push
+git commit -m "feat: add new feature"
+git push origin feat/your-feature
+
+# 8. Create Pull Request
+```
+
+### Commit Convention
+
+We use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```bash
+feat: add new feature
+fix: resolve bug
+docs: update documentation
+chore: update dependencies
+```
+
+### Pull Request Process
+
+1. Create feature branch from `main`
+2. Make changes with tests
+3. Create changeset for version bump
+4. Submit PR with clear description
+5. Pass CI checks
+6. Get approval from maintainer
+7. Merge to `main`
+
+[→ Full contributing guide](docs/DEVELOPMENT.md)
+
+---
 
 ## Development
+
+### Prerequisites
+
+- **Bun** >= 1.0.0 (for development)
+- **Node.js** >= 18.0.0
+- **Git**
 
 ### Setup
 
 ```bash
+# Install dependencies
 bun install
+
+# Build all packages
 bun run build
-npm link
-```
 
-### Testing
+# Link globally for testing
+bun run local-install
 
-```bash
+# Run tests
 bun test
-bun run test:ui
-```
 
-### Linting
-
-```bash
-bun run lint
-bun run format
-```
-
-### Type Checking
-
-```bash
+# Type check
 bun run typecheck
+
+# Lint
+bun run lint
 ```
 
-## Contributing
+### Available Commands
 
-We use a staging/pre-release workflow for this project:
+```bash
+# Build
+bun run build              # Build all
+bun run build:packages     # Build packages only
+bun run build:cli          # Build CLI only
+bun run build:web          # Build web UI only
 
-### Branch Structure
+# Development
+bun run dev                # Watch mode (in package dir)
+bun run local-install      # Link packages globally
+bun run verify-local       # Verify local linking
 
-- **main**: Stable releases (e.g., 1.0.0, 1.1.0)
-- **staging**: Pre-releases for testing (e.g., 1.1.0-beta.1)
-- **feature branches**: Development work
+# Testing
+bun test                   # Run all tests
+bun test --watch           # Watch mode
+bun test --coverage        # With coverage
 
-### Contribution Flow
+# Quality
+bun run typecheck          # Type checking
+bun run lint               # Linting
+bun run lint:fix           # Fix linting issues
+bun run format             # Format code
 
-1. Fork the repository
-2. Create your feature branch from `staging`:
+# Release
+bun run changeset          # Create changeset
+bun run release            # Publish to NPM
+```
 
-   ```bash
-   git checkout staging
-   git pull origin staging
-   git checkout -b feat/your-feature-name
-   ```
+### Monorepo Structure
 
-3. Make your changes and commit using conventional commits:
+```
+blueprintdata-cli/
+├── apps/
+│   ├── cli/            # CLI application
+│   └── web/            # Web UI
+└── packages/
+    └── @blueprintdata/
+        ├── analytics/  # Context building & agent
+        ├── auth/       # Authentication
+        ├── config/     # Configuration
+        ├── database/   # Drizzle ORM
+        ├── errors/     # Error handling
+        ├── gateway/    # WebSocket server
+        ├── models/     # TypeScript types
+        └── warehouse/  # Warehouse connectors
+```
 
-   ```bash
-   git commit -m "feat: add new feature"
-   git commit -m "fix: resolve bug"
-   git commit -m "chore: update dependencies"
-   ```
+[→ Full development guide](docs/DEVELOPMENT.md)
 
-4. Push to your fork and create a Pull Request targeting `staging`:
+---
 
-   ```bash
-   git push origin feat/your-feature-name
-   ```
+## Architecture
 
-5. Once your PR is merged to `staging`, a beta version will be automatically published to npm (e.g., `1.1.0-beta.1`)
+BlueprintData CLI is built as a **Bun workspace monorepo** with TypeScript project references.
 
-6. When ready for a stable release, a maintainer will create a PR from `staging` to `main`
+### Key Technologies
 
-7. Merging to `main` triggers a stable release to npm
+- **Runtime**: Bun (dev) / Node.js (prod)
+- **Language**: TypeScript 5+ with strict mode
+- **CLI**: Commander.js + @clack/prompts
+- **Web**: React 18 + TanStack Router + Vite
+- **Database**: SQLite + Drizzle ORM
+- **Auth**: JWT + bcrypt
+- **LLM**: Anthropic SDK + OpenAI SDK
+- **Warehouses**: BigQuery + PostgreSQL
 
-### Commit Message Format
+### Design Patterns
 
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+- **Monorepo with Workspaces** - Shared code via packages
+- **Service Layer Pattern** - Business logic separation
+- **Strategy Pattern** - Pluggable connectors
+- **Factory Pattern** - Centralized object creation
+- **Repository Pattern** - Type-safe data access
 
-- `feat:` - New features (triggers minor version bump)
-- `fix:` - Bug fixes (triggers patch version bump)
-- `chore:` - Maintenance tasks
-- `docs:` - Documentation changes
-- `refactor:` - Code refactoring
-- `test:` - Test updates
-- `ci:` - CI/CD changes
+[→ Full architecture guide](docs/ARCHITECTURE.md)
 
-### Release Process
+---
 
-Releases are automated using semantic-release:
+## Roadmap
 
-- Push to `staging` → Publishes pre-release version (e.g., `1.1.0-beta.1`)
-- Push to `main` → Publishes stable version (e.g., `1.1.0`)
+### Current (MVP - In Progress)
+
+- ✅ Project scaffolding templates
+- ✅ Analytics agent initialization
+- ✅ Warehouse profiling & documentation
+- ✅ dbt integration
+- ✅ LLM enrichment (Claude & GPT)
+- ✅ Authentication system
+- ✅ WebSocket gateway
+- ✅ Web UI (React)
+- 🚧 Chat interface (Phase 6)
+- 🚧 CLI integration (Phase 6)
+- 📋 Testing & polish (Phase 7)
+
+### Near Term (Q1 2026)
+
+- Interactive chat interface
+- Tool execution (query, search, chart)
+- Session management
+- Enhanced documentation
+- Comprehensive testing
+
+### Future
+
+- Additional warehouses (Snowflake, Redshift, Databricks)
+- Slack bot integration
+- Data quality checks
+- Anomaly detection
+- Multi-tenancy support
+- Custom tool plugins
+
+[→ Detailed roadmap](ROADMAP.md)
+
+---
 
 ## License
 
 MIT
+
+---
+
+## Support
+
+- **Documentation**: See [docs/](docs/) directory
+- **Issues**: [GitHub Issues](https://github.com/your-org/blueprintdata-cli/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-org/blueprintdata-cli/discussions)
+
+---
+
+## Acknowledgments
+
+Built with:
+- [Bun](https://bun.sh/) - Fast all-in-one JavaScript runtime
+- [dbt](https://www.getdbt.com/) - Data transformation tool
+- [Meltano](https://meltano.com/) - DataOps platform
+- [Anthropic Claude](https://www.anthropic.com/) - AI assistant
+- [OpenAI GPT](https://openai.com/) - AI models
+- [Drizzle ORM](https://orm.drizzle.team/) - TypeScript ORM
+- [TanStack Router](https://tanstack.com/router) - Type-safe routing
+
+---
+
+**Built with ❤️ by Blueprint Data**

@@ -12,6 +12,9 @@
     { "path": "../../packages/@blueprintdata/errors" },
     { "path": "../../packages/@blueprintdata/config" },
     { "path": "../../packages/@blueprintdata/warehouse" },
-    { "path": "../../packages/@blueprintdata/analytics" }
+    { "path": "../../packages/@blueprintdata/analytics" },
+    { "path": "../../packages/@blueprintdata/gateway" },
+    { "path": "../../packages/@blueprintdata/database" },
+    { "path": "../../packages/@blueprintdata/auth" }
   ]
 }
