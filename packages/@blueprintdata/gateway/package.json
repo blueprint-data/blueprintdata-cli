@@ -20,6 +20,8 @@
   "dependencies": {
     "@blueprintdata/models": "workspace:*",
     "@blueprintdata/analytics": "workspace:*",
+    "@blueprintdata/auth": "workspace:*",
+    "@blueprintdata/database": "workspace:*",
     "ws": "^8.18.0",
     "jsonwebtoken": "^9.0.0",
     "uuid": "^9.0.0"

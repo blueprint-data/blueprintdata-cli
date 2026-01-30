@@ -31,7 +31,11 @@
       "@blueprintdata/analytics": ["./packages/@blueprintdata/analytics/src"],
       "@blueprintdata/analytics/*": ["./packages/@blueprintdata/analytics/src/*"],
       "@blueprintdata/gateway": ["./packages/@blueprintdata/gateway/src"],
-      "@blueprintdata/gateway/*": ["./packages/@blueprintdata/gateway/src/*"]
+      "@blueprintdata/gateway/*": ["./packages/@blueprintdata/gateway/src/*"],
+      "@blueprintdata/database": ["./packages/@blueprintdata/database/src"],
+      "@blueprintdata/database/*": ["./packages/@blueprintdata/database/src/*"],
+      "@blueprintdata/auth": ["./packages/@blueprintdata/auth/src"],
+      "@blueprintdata/auth/*": ["./packages/@blueprintdata/auth/src/*"]
     }
   },
   "exclude": ["node_modules", "dist", "build"]

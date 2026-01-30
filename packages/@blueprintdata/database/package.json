@@ -1,0 +1,40 @@
+{
+  "name": "@blueprintdata/database",
+  "version": "1.0.0",
+  "description": "Database layer for BlueprintData Analytics with Drizzle ORM",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "db:generate": "drizzle-kit generate:sqlite",
+    "db:migrate": "drizzle-kit push:sqlite",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@blueprintdata/models": "workspace:*",
+    "@blueprintdata/errors": "workspace:*",
+    "@libsql/client": "^0.14.0",
+    "drizzle-orm": "^0.30.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.0",
+    "drizzle-kit": "^0.20.0",
+    "typescript": "^5.3.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "private": true
+}

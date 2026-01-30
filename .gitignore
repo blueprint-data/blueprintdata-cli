@@ -11,3 +11,15 @@ plan.md
 # Analytics agent context cache
 agent-context/.cache/
 .blueprintdata/
+
+# Build artifacts - prevent anywhere in repo
+**/*.js.map
+**/*.d.ts.map
+
+# JS files in TypeScript package source directories
+packages/**/*.js
+apps/**/src/**/*.js
+
+# Declaration files in source directories
+packages/**/src/**/*.d.ts
+apps/**/src/**/*.d.ts

@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { templateCommand } from './commands/template.js';
 import { analyticsCommand } from './commands/analytics/index.js';
+import { authCommand } from './commands/auth/index.js';
 import { versionCommand } from './commands/version.js';
 import { readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
@@ -43,6 +44,7 @@ ${isLocal ? '\n🔧 LOCAL DEVELOPMENT VERSION\nRun "bun run verify-local" to che
 
   program.addCommand(templateCommand);
   program.addCommand(analyticsCommand);
+  program.addCommand(authCommand);
   program.addCommand(versionCommand);
 
   return program;

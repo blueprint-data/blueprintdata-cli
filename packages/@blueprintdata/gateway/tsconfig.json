@@ -7,5 +7,10 @@
   },
   "include": ["src/**/*"],
   "exclude": ["**/__tests__/**", "**/*.test.ts"],
-  "references": [{ "path": "../models" }, { "path": "../analytics" }]
+  "references": [
+    { "path": "../models" },
+    { "path": "../analytics" },
+    { "path": "../auth" },
+    { "path": "../database" }
+  ]
 }
