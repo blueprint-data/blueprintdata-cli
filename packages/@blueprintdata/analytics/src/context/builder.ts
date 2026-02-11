@@ -83,9 +83,16 @@ export class ContextBuilder {
     // Profile warehouse tables
     console.log('Profiling warehouse tables...');
     const profiler = new WarehouseProfiler(this.options.connector);
+    const selection = await this.resolveProfileSelection({
+      modelSelection: config.modelSelection,
+      schemaSelection: config.schemaSelection,
+      dbtTarget: config.dbtTarget,
+    });
     await profiler.profileAll({
       outputDir: modelsDir,
       includeRowCounts: true,
+      tables: selection.tables,
+      schemas: selection.schemas,
       enricher,
       companyContext: config.companyContext,
     });
@@ -337,39 +344,11 @@ To work with this project:
     const modelsDir = path.join(contextDir, MODELS_DIR);
     const profiler = new WarehouseProfiler(connector);
 
-    // Parse model selection if provided and resolve to table names
-    let tablesToProfile: string[] | undefined;
-    if (options?.modelSelection) {
-      const modelNames = options.modelSelection.split(',').map((m) => m.trim());
-      console.log(`Profiling ${modelNames.length} selected models...`);
-
-      // Use dbt integration to resolve model names to table names
-      const dbtTarget = options.dbtTarget || config.dbtTarget;
-      const dbtIntegration = new DbtIntegration(projectPath, dbtTarget);
-
-      if (dbtTarget) {
-        console.log(`  Using dbt target: ${dbtTarget}`);
-      }
-
-      await dbtIntegration.ensureManifest();
-
-      tablesToProfile = [];
-      for (const modelName of modelNames) {
-        const tableName = await dbtIntegration.getModelTableName(modelName);
-        if (tableName) {
-          tablesToProfile.push(tableName);
-        } else {
-          console.warn(`  Warning: Could not resolve model '${modelName}' to a table name`);
-        }
-      }
-
-      if (tablesToProfile.length === 0) {
-        console.warn('  No valid models found, profiling all tables');
-        tablesToProfile = undefined;
-      } else {
-        console.log(`  Resolved to ${tablesToProfile.length} warehouse tables`);
-      }
-    }
+    const selection = await this.resolveProfileSelection({
+      modelSelection: options?.modelSelection ?? config.modelSelection,
+      schemaSelection: config.schemaSelection,
+      dbtTarget: options?.dbtTarget ?? config.dbtTarget,
+    });
 
     // Initialize LLM client if configured (optional for Phase 2.2)
     let llmClient: LLMClient | undefined;
@@ -388,11 +367,55 @@ To work with this project:
     await profiler.profileAll({
       outputDir: modelsDir,
       includeRowCounts: true,
-      tables: tablesToProfile,
+      tables: selection.tables,
+      schemas: selection.schemas,
       enricher,
       companyContext: config.companyContext,
     });
 
     console.log('Agent context updated successfully!');
+  }
+
+  private async resolveProfileSelection(options: {
+    modelSelection?: string;
+    schemaSelection?: string[];
+    dbtTarget?: string;
+  }): Promise<{ tables?: string[]; schemas?: string[] }> {
+    const { modelSelection, schemaSelection, dbtTarget } = options;
+
+    if (!modelSelection) {
+      return { schemas: schemaSelection };
+    }
+
+    const dbtIntegration = new DbtIntegration(this.options.projectPath, dbtTarget);
+    if (dbtTarget) {
+      console.log(`  Using dbt target: ${dbtTarget}`);
+    }
+
+    const modelNames = await dbtIntegration.resolveModelSelection(modelSelection);
+    if (modelNames.length === 0) {
+      console.warn('  No models matched selection, profiling selected schemas or all tables');
+      return { schemas: schemaSelection };
+    }
+
+    await dbtIntegration.ensureManifest();
+
+    const tables: string[] = [];
+    for (const modelName of modelNames) {
+      const tableName = await dbtIntegration.getModelTableName(modelName);
+      if (tableName) {
+        tables.push(tableName);
+      } else {
+        console.warn(`  Warning: Could not resolve model '${modelName}' to a table name`);
+      }
+    }
+
+    if (tables.length === 0) {
+      console.warn('  No valid models found, profiling selected schemas or all tables');
+      return { schemas: schemaSelection };
+    }
+
+    console.log(`  Resolved to ${tables.length} warehouse tables`);
+    return { tables };
   }
 }

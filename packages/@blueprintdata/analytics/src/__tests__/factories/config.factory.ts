@@ -15,8 +15,8 @@ export function createMockConfigV2(overrides?: Partial<AnalyticsConfigV2>): Anal
     llm: {
       provider: 'anthropic',
       apiKey: 'test-api-key',
-      chatModel: 'claude-3-5-sonnet-20241022',
-      profilingModel: 'claude-3-5-haiku-20241022',
+      chatModel: 'claude-sonnet-4-5',
+      profilingModel: 'claude-haiku-4-5',
     },
     warehouse: {
       type: 'postgres',
@@ -57,8 +57,8 @@ export function createMockConfigV1(overrides?: Partial<AnalyticsConfig>): Analyt
     dbtTarget: undefined,
     llmProvider: 'anthropic' as LLMProvider,
     llmApiKey: 'test-api-key',
-    llmModel: 'claude-3-5-sonnet-20241022',
-    llmProfilingModel: 'claude-3-5-haiku-20241022',
+    llmModel: 'claude-sonnet-4-5',
+    llmProfilingModel: 'claude-haiku-4-5',
     warehouseType: 'postgres',
     warehouseConnection: {
       type: 'postgres',
@@ -113,8 +113,8 @@ export function createMockConfigWithOpenAI(
     llm: {
       provider: 'openai',
       apiKey: 'test-openai-key',
-      chatModel: 'gpt-4o',
-      profilingModel: 'gpt-4o-mini',
+      chatModel: 'gpt-5.2',
+      profilingModel: 'gpt-5-mini',
     },
   });
 }

@@ -48,6 +48,8 @@ export interface AnalyticsConfig {
   companyContext?: CompanyContext;
   // Model selection for profiling (Phase 2.2)
   modelSelection?: string; // dbt selection syntax (e.g., "marts.*", "tag:core")
+  // Optional schema selection for profiling
+  schemaSelection?: string[]; // warehouse schemas to profile
   slackBotToken?: string;
   slackSigningSecret?: string;
   uiPort?: number;

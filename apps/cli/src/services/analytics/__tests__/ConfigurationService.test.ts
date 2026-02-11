@@ -31,8 +31,8 @@ describe('ConfigurationService', () => {
         dbtTarget: undefined,
         llmProvider: 'anthropic' as const,
         llmApiKey: 'test-key',
-        llmModel: 'claude-3-5-sonnet-20241022',
-        llmProfilingModel: 'claude-3-5-haiku-20241022',
+        llmModel: 'claude-sonnet-4-5',
+        llmProfilingModel: 'claude-haiku-4-5',
         warehouseConnection: createWarehouseConnection(),
         companyContext: undefined,
         modelSelection: undefined,
@@ -58,13 +58,13 @@ describe('ConfigurationService', () => {
         dbtTarget: undefined,
         llmProvider: 'anthropic' as const,
         llmApiKey: 'test-key',
-        llmModel: 'claude-3-5-sonnet-20241022',
-        llmProfilingModel: 'claude-3-5-haiku-20241022',
+        llmModel: 'claude-sonnet-4-5',
+        llmProfilingModel: 'claude-haiku-4-5',
         warehouseConnection: createWarehouseConnection(),
         companyContext: {
-          companyName: 'Test Company',
-          companyDescription: 'Test description',
-          companyWebsite: 'https://test.com',
+          name: 'Test Company',
+          userContext: 'Test description',
+          websites: ['https://test.com'],
         },
         modelSelection: 'staging',
         slackBotToken: undefined,
@@ -75,8 +75,8 @@ describe('ConfigurationService', () => {
 
       const config = await service.buildAndSave(options);
 
-      expect(config.companyContext?.companyName).toBe('Test Company');
-      expect(config.companyContext?.companyDescription).toBe('Test description');
+      expect(config.companyContext?.name).toBe('Test Company');
+      expect(config.companyContext?.userContext).toBe('Test description');
       expect(config.modelSelection).toBe('staging');
     });
 
@@ -86,8 +86,8 @@ describe('ConfigurationService', () => {
         dbtTarget: undefined,
         llmProvider: 'anthropic' as const,
         llmApiKey: 'test-key',
-        llmModel: 'claude-3-5-sonnet-20241022',
-        llmProfilingModel: 'claude-3-5-haiku-20241022',
+        llmModel: 'claude-sonnet-4-5',
+        llmProfilingModel: 'claude-haiku-4-5',
         warehouseConnection: createWarehouseConnection(),
         companyContext: undefined,
         modelSelection: undefined,
@@ -109,8 +109,8 @@ describe('ConfigurationService', () => {
         dbtTarget: undefined,
         llmProvider: 'anthropic' as const,
         llmApiKey: 'test-key',
-        llmModel: 'claude-3-5-sonnet-20241022',
-        llmProfilingModel: 'claude-3-5-haiku-20241022',
+        llmModel: 'claude-sonnet-4-5',
+        llmProfilingModel: 'claude-haiku-4-5',
         warehouseConnection: createWarehouseConnection(),
         companyContext: undefined,
         modelSelection: undefined,
@@ -130,8 +130,8 @@ describe('ConfigurationService', () => {
         dbtTarget: undefined,
         llmProvider: 'openai' as const,
         llmApiKey: 'sk-test-key',
-        llmModel: 'gpt-4o',
-        llmProfilingModel: 'gpt-4o-mini',
+        llmModel: 'gpt-5.2',
+        llmProfilingModel: 'gpt-5-mini',
         warehouseConnection: createWarehouseConnection(),
         companyContext: undefined,
         modelSelection: undefined,
@@ -144,8 +144,8 @@ describe('ConfigurationService', () => {
       const config = await service.buildAndSave(options);
 
       expect(config.llmProvider).toBe('openai');
-      expect(config.llmModel).toBe('gpt-4o');
-      expect(config.llmProfilingModel).toBe('gpt-4o-mini');
+      expect(config.llmModel).toBe('gpt-5.2');
+      expect(config.llmProfilingModel).toBe('gpt-5-mini');
     });
 
     it('should set dbt target when provided', async () => {
@@ -154,8 +154,8 @@ describe('ConfigurationService', () => {
         dbtTarget: 'production',
         llmProvider: 'anthropic' as const,
         llmApiKey: 'test-key',
-        llmModel: 'claude-3-5-sonnet-20241022',
-        llmProfilingModel: 'claude-3-5-haiku-20241022',
+        llmModel: 'claude-sonnet-4-5',
+        llmProfilingModel: 'claude-haiku-4-5',
         warehouseConnection: createWarehouseConnection(),
         companyContext: undefined,
         modelSelection: undefined,

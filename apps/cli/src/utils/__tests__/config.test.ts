@@ -1,7 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { loadConfig, saveConfig, loadConfigV2, saveConfigV2, isAnalyticsInitialized } from '../config.js';
+import {
+  loadConfig,
+  saveConfig,
+  loadConfigV2,
+  saveConfigV2,
+  isAnalyticsInitialized,
+} from '../config.js';
 import { TestDbtProject } from '../../__tests__/helpers/test-project.js';
-import { createMockConfigV1, createMockConfigV2 } from '../../__tests__/factories/config.factory.js';
+import {
+  createMockConfigV1,
+  createMockConfigV2,
+} from '../../__tests__/factories/config.factory.js';
 
 describe('Configuration Utils', () => {
   let testProject: TestDbtProject;
@@ -122,8 +131,8 @@ describe('Configuration Utils', () => {
         project: { projectPath: testProject.path, dbtProfilesPath: '~/.dbt/profiles.yml' },
         company: {
           context: {
-            companyName: 'Test Company',
-            companyDescription: 'Test description',
+            name: 'Test Company',
+            userContext: 'Test description',
           },
           modelSelection: 'staging',
         },
@@ -136,7 +145,7 @@ describe('Configuration Utils', () => {
       await saveConfigV2(mockConfig, testProject.path);
 
       const loaded = await loadConfigV2(testProject.path);
-      expect(loaded.company?.context.companyName).toBe('Test Company');
+      expect(loaded.company?.context.name).toBe('Test Company');
       expect(loaded.slack?.botToken).toBe('xoxb-test');
     });
   });

@@ -9,7 +9,7 @@ describe('LLMEnricher', () => {
   let enricher: LLMEnricher;
 
   beforeEach(() => {
-    mockClient = new MockLLMClient('anthropic', 'test-key', 'claude-3-5-sonnet-20241022');
+    mockClient = new MockLLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
     enricher = new LLMEnricher(mockClient);
   });
 

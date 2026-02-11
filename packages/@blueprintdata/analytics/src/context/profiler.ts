@@ -17,6 +17,7 @@ export interface ProfileOptions {
   tables?: string[];
   outputDir: string;
   includeRowCounts?: boolean;
+  concurrency?: number;
   enricher?: LLMEnricher; // Optional LLM enrichment
   companyContext?: CompanyContext; // Optional company context
   dbtMetadata?: Record<string, DbtModelMetadata>; // Optional dbt metadata by table name
@@ -42,10 +43,13 @@ export class WarehouseProfiler {
       tables,
       outputDir,
       includeRowCounts = true,
+      concurrency,
       enricher,
       companyContext,
       dbtMetadata,
     } = options;
+
+    const verbose = process.env.BLUEPRINTDATA_VERBOSE === '1';
 
     // Ensure output directory exists
     await fs.ensureDir(outputDir);
@@ -67,52 +71,67 @@ export class WarehouseProfiler {
       errors: [],
     };
 
-    // Profile each table
-    for (const { schemaName, tableName } of tablesToProfile) {
-      try {
-        const result = await this.profileTable(
-          schemaName,
-          tableName,
-          outputDir,
-          includeRowCounts,
-          enricher,
-          companyContext,
-          dbtMetadata?.[tableName]
-        );
+    const maxConcurrency = Math.max(1, concurrency ?? 4);
+    const workerCount = Math.min(maxConcurrency, tablesToProfile.length);
+    let nextIndex = 0;
 
-        if (result.success) {
-          summary.successful++;
-          if (result.tokensUsed) {
-            // Rough cost estimate (will be more accurate with actual model pricing)
-            const inputCost = (result.tokensUsed.input / 1_000_000) * 1.0; // $1 per 1M input tokens (Haiku)
-            const outputCost = (result.tokensUsed.output / 1_000_000) * 5.0; // $5 per 1M output tokens (Haiku)
-            summary.totalCost += inputCost + outputCost;
-          }
-        } else {
-          summary.fallback++;
-          if (result.error) {
-            summary.errors.push(result.error);
-          }
+    const workers = Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const currentIndex = nextIndex++;
+        if (currentIndex >= tablesToProfile.length) {
+          break;
         }
 
-        summary.totalTime += result.duration;
+        const { schemaName, tableName } = tablesToProfile[currentIndex];
 
-        if ((summary.successful + summary.fallback) % 10 === 0) {
-          console.log(
-            `Profiled ${summary.successful + summary.fallback}/${tablesToProfile.length} tables...`
+        try {
+          const result = await this.profileTable(
+            schemaName,
+            tableName,
+            outputDir,
+            includeRowCounts,
+            enricher,
+            companyContext,
+            dbtMetadata?.[tableName],
+            verbose
           );
+
+          if (result.success) {
+            summary.successful++;
+            if (result.tokensUsed) {
+              // Rough cost estimate (will be more accurate with actual model pricing)
+              const inputCost = (result.tokensUsed.input / 1_000_000) * 1.0; // $1 per 1M input tokens (Haiku)
+              const outputCost = (result.tokensUsed.output / 1_000_000) * 5.0; // $5 per 1M output tokens (Haiku)
+              summary.totalCost += inputCost + outputCost;
+            }
+          } else {
+            summary.fallback++;
+            if (result.error) {
+              summary.errors.push(result.error);
+            }
+          }
+
+          summary.totalTime += result.duration;
+
+          if ((summary.successful + summary.fallback) % 10 === 0) {
+            console.log(
+              `Profiled ${summary.successful + summary.fallback}/${tablesToProfile.length} tables...`
+            );
+          }
+        } catch (error) {
+          summary.failed++;
+          summary.errors.push({
+            modelName: `${schemaName}.${tableName}`,
+            errorType: 'warehouse',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            fallbackUsed: false,
+          });
+          console.error(`Failed to profile ${schemaName}.${tableName}:`, error);
         }
-      } catch (error) {
-        summary.failed++;
-        summary.errors.push({
-          modelName: `${schemaName}.${tableName}`,
-          errorType: 'warehouse',
-          error: error instanceof Error ? error.message : 'Unknown error',
-          fallbackUsed: false,
-        });
-        console.error(`Failed to profile ${schemaName}.${tableName}:`, error);
       }
-    }
+    });
+
+    await Promise.all(workers);
 
     console.log(
       `Successfully profiled ${summary.successful + summary.fallback}/${tablesToProfile.length} tables`
@@ -139,7 +158,8 @@ export class WarehouseProfiler {
     includeRowCounts: boolean = true,
     enricher?: LLMEnricher,
     companyContext?: CompanyContext,
-    dbtMetadata?: DbtModelMetadata
+    dbtMetadata?: DbtModelMetadata,
+    verbose: boolean = false
   ): Promise<{
     success: boolean;
     duration: number;
@@ -150,94 +170,114 @@ export class WarehouseProfiler {
     console.log(`\n  Profiling ${schemaName}.${tableName}...`);
 
     // Get basic schema
+    if (verbose) {
       console.log(`    [1/4] Fetching table schema...`);
-      const schemaStart = Date.now();
-      const schema = await this.connector.getTableSchema(schemaName, tableName);
+    }
+    const schemaStart = Date.now();
+    const schema = await this.connector.getTableSchema(schemaName, tableName);
+    if (verbose) {
       console.log(
         `    ✓ Schema fetched (${Date.now() - schemaStart}ms) - ${schema.columns.length} columns`
       );
+    }
 
-      // Gather enhanced statistics if LLM enrichment is enabled
-      let enhancedStats: EnhancedTableStats | undefined;
-      let markdown: string;
+    // Gather enhanced statistics if LLM enrichment is enabled
+    let enhancedStats: EnhancedTableStats | undefined;
+    let markdown: string;
 
-      if (enricher) {
-        // Gather enhanced statistics
+    if (enricher) {
+      // Gather enhanced statistics
+      if (verbose) {
         console.log(`    [2/4] Gathering enhanced statistics (cardinality, samples, etc.)...`);
-        const statsStart = Date.now();
-        const statsGatherer = new StatisticsGatherer(this.connector);
-        enhancedStats = await statsGatherer.gatherTableStats(schemaName, tableName);
+      }
+      const statsStart = Date.now();
+      const statsGatherer = new StatisticsGatherer(this.connector);
+      enhancedStats = await statsGatherer.gatherTableStats(schemaName, tableName);
+      if (verbose) {
         console.log(`    ✓ Statistics gathered (${Date.now() - statsStart}ms)`);
+      }
 
-        // Try LLM enrichment
+      // Try LLM enrichment
+      if (verbose) {
         console.log(`    [3/4] Calling LLM for rich documentation...`);
-        const llmStart = Date.now();
-        const result = await enricher.enrichTableProfile(
-          enhancedStats,
-          dbtMetadata,
-          companyContext
-        );
+      }
+      const llmStart = Date.now();
+      const result = await enricher.enrichTableProfile(enhancedStats, dbtMetadata, companyContext);
+      if (verbose) {
         console.log(`    ✓ LLM response received (${Date.now() - llmStart}ms)`);
+      }
 
-        if (result.tokensUsed) {
-          const inputCost = (result.tokensUsed.input / 1_000_000) * 1.0;
-          const outputCost = (result.tokensUsed.output / 1_000_000) * 5.0;
-          const totalCost = inputCost + outputCost;
-          console.log(
-            `    ✓ Tokens: ${result.tokensUsed.input} input + ${result.tokensUsed.output} output (~$${totalCost.toFixed(4)})`
-          );
-        }
+      if (result.tokensUsed && verbose) {
+        const inputCost = (result.tokensUsed.input / 1_000_000) * 1.0;
+        const outputCost = (result.tokensUsed.output / 1_000_000) * 5.0;
+        const totalCost = inputCost + outputCost;
+        console.log(
+          `    ✓ Tokens: ${result.tokensUsed.input} input + ${result.tokensUsed.output} output (~$${totalCost.toFixed(4)})`
+        );
+      }
 
-        if (result.success) {
-          // LLM succeeded - get the enriched content
+      if (result.success) {
+        // LLM succeeded - get the enriched content
+        if (verbose) {
           console.log(`    [4/4] Generating markdown file...`);
-          markdown = await enricher.getEnrichedContent(enhancedStats, dbtMetadata, companyContext);
-
-          // Save to file
-          const filename = `${schemaName}_${tableName}.md`;
-          const filepath = path.join(outputDir, filename);
-          await fs.writeFile(filepath, markdown, 'utf-8');
-          console.log(`    ✓ Saved to ${filename}`);
-
-          const duration = Date.now() - startTime;
-          console.log(`  ✓ Complete (${(duration / 1000).toFixed(1)}s total)\n`);
-          return {
-            success: true,
-            duration,
-            tokensUsed: result.tokensUsed,
-          };
-        } else {
-          // LLM failed - use fallback
-          console.log(`    ⚠ LLM failed, using fallback template`);
-          markdown = generateFallbackProfile(enhancedStats, dbtMetadata);
-
-          const filename = `${schemaName}_${tableName}.md`;
-          const filepath = path.join(outputDir, filename);
-          await fs.writeFile(filepath, markdown, 'utf-8');
-          console.log(`    ✓ Saved to ${filename} (fallback)`);
-
-          const duration = Date.now() - startTime;
-          console.log(`  ✓ Complete (${(duration / 1000).toFixed(1)}s total)\n`);
-          return {
-            success: false,
-            duration,
-            error: result.error,
-          };
         }
+        markdown = await enricher.getEnrichedContent(enhancedStats, dbtMetadata, companyContext);
+
+        // Save to file
+        const filename = `${schemaName}_${tableName}.md`;
+        const filepath = path.join(outputDir, filename);
+        await fs.writeFile(filepath, markdown, 'utf-8');
+        if (verbose) {
+          console.log(`    ✓ Saved to ${filename}`);
+        }
+
+        const duration = Date.now() - startTime;
+        console.log(`  ✓ Profiled ${schemaName}.${tableName} (${(duration / 1000).toFixed(1)}s)`);
+        return {
+          success: true,
+          duration,
+          tokensUsed: result.tokensUsed,
+        };
       } else {
-        // No enricher - use basic markdown
-        console.log(`    [2/2] Generating basic markdown (no LLM)...`);
-        markdown = this.generateBasicMarkdown(schema, includeRowCounts);
+        // LLM failed - use fallback
+        if (verbose) {
+          console.log(`    ⚠ LLM failed, using fallback template`);
+        }
+        markdown = generateFallbackProfile(enhancedStats, dbtMetadata);
 
         const filename = `${schemaName}_${tableName}.md`;
         const filepath = path.join(outputDir, filename);
         await fs.writeFile(filepath, markdown, 'utf-8');
-        console.log(`    ✓ Saved to ${filename}`);
+        if (verbose) {
+          console.log(`    ✓ Saved to ${filename} (fallback)`);
+        }
 
         const duration = Date.now() - startTime;
-        console.log(`  ✓ Complete (${(duration / 1000).toFixed(1)}s total)\n`);
-        return { success: true, duration };
+        console.log(`  ✓ Profiled ${schemaName}.${tableName} (${(duration / 1000).toFixed(1)}s)`);
+        return {
+          success: false,
+          duration,
+          error: result.error,
+        };
       }
+    } else {
+      // No enricher - use basic markdown
+      if (verbose) {
+        console.log(`    [2/2] Generating basic markdown (no LLM)...`);
+      }
+      markdown = this.generateBasicMarkdown(schema, includeRowCounts);
+
+      const filename = `${schemaName}_${tableName}.md`;
+      const filepath = path.join(outputDir, filename);
+      await fs.writeFile(filepath, markdown, 'utf-8');
+      if (verbose) {
+        console.log(`    ✓ Saved to ${filename}`);
+      }
+
+      const duration = Date.now() - startTime;
+      console.log(`  ✓ Profiled ${schemaName}.${tableName} (${(duration / 1000).toFixed(1)}s)`);
+      return { success: true, duration };
+    }
   }
 
   /**
@@ -252,24 +292,31 @@ export class WarehouseProfiler {
       return tables.map((fullTableName) => {
         const parts = fullTableName.split('.');
 
-        console.log(`  Debug: Parsing table name '${fullTableName}' with ${parts.length} parts`);
+        const verbose = process.env.BLUEPRINTDATA_VERBOSE === '1';
+        if (verbose) {
+          console.log(`  Debug: Parsing table name '${fullTableName}' with ${parts.length} parts`);
+        }
 
-        // Handle BigQuery format: project.dataset.table (3 parts)
+        // Handle 3-part format: database.schema.table
         if (parts.length === 3) {
-          console.log(
-            `  Debug: BigQuery format detected - schema: ${parts[1]}, table: ${parts[2]}`
-          );
+          if (verbose) {
+            console.log(
+              `  Debug: 3-part format detected - schema: ${parts[1]}, table: ${parts[2]}`
+            );
+          }
           return {
-            schemaName: parts[1], // dataset is the "schema" in BigQuery
+            schemaName: parts[1],
             tableName: parts[2],
           };
         }
 
         // Handle standard format: schema.table (2 parts)
         if (parts.length === 2) {
-          console.log(
-            `  Debug: Standard format detected - schema: ${parts[0]}, table: ${parts[1]}`
-          );
+          if (verbose) {
+            console.log(
+              `  Debug: Standard format detected - schema: ${parts[0]}, table: ${parts[1]}`
+            );
+          }
           return {
             schemaName: parts[0],
             tableName: parts[1],
@@ -277,9 +324,11 @@ export class WarehouseProfiler {
         }
 
         // Handle single name (no dots)
-        console.log(
-          `  Debug: Single name detected - using default schema 'public', table: ${parts[0]}`
-        );
+        if (verbose) {
+          console.log(
+            `  Debug: Single name detected - using default schema 'public', table: ${parts[0]}`
+          );
+        }
         return {
           schemaName: 'public',
           tableName: parts[0],

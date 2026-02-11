@@ -27,8 +27,8 @@ export class TestDbtProject {
       includeManifest = false,
     } = options;
 
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-dbt-'));
-    const project = new TestDbtProject(tempDir);
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-dbt-'), 'utf-8');
+    const project = new TestDbtProject(tempDir.toString());
 
     await project.createDbtProjectFile(projectName);
     await project.createModelsDirectory();
@@ -268,7 +268,8 @@ export class TestDbtProject {
     const fullPath = path.join(this.path, relativePath);
     const exists = await fs.pathExists(fullPath);
     if (!exists) return [];
-    return fs.readdir(fullPath);
+    const entries = await fs.readdir(fullPath, { encoding: 'utf-8' });
+    return entries.map((entry) => entry.toString());
   }
 
   /**
@@ -334,8 +335,8 @@ export async function createInitializedTestProject(
     llm: {
       provider: 'anthropic',
       apiKey: 'test-key',
-      chatModel: 'claude-3-5-sonnet-20241022',
-      profilingModel: 'claude-3-5-haiku-20241022',
+      chatModel: 'claude-sonnet-4-5',
+      profilingModel: 'claude-haiku-4-5',
     },
     warehouse: {
       type: 'postgres',

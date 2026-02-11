@@ -1,13 +1,24 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
-import { getDbtProfile, validateLLMApiKey } from '../../utils/env.js';
+import {
+  getDbtProfile,
+  getWarehouseConnectionFromDbt,
+  validateLLMApiKey,
+} from '../../utils/env.js';
 import { LLMProvider, CompanyContext } from '@blueprintdata/models';
-import { getModelsForProvider, getDefaultModel, formatModelOption } from '@blueprintdata/analytics';
+import {
+  getModelsForProvider,
+  getDefaultModel,
+  formatModelOption,
+  ContextBuilder,
+} from '@blueprintdata/analytics';
 import { WebsiteScraper, DbtProjectScanner } from '@blueprintdata/analytics';
 import { ServiceFactory } from '../../factories/ServiceFactory.js';
 import { InitOptions } from '../../services/analytics/InitService.js';
 import { DEFAULT_CONFIG } from '@blueprintdata/config';
 import { validateDbtProject } from '../../utils/validation.js';
+import { isAnalyticsInitialized, loadConfig } from '../../utils/config.js';
+import { createWarehouseConnector } from '@blueprintdata/warehouse';
 
 export const initCommand = new Command('init')
   .description('Initialize analytics agent in a dbt project')
@@ -29,15 +40,84 @@ export const initCommand = new Command('init')
       await getDbtProfile(projectPath);
       p.log.success('dbt profiles.yml ok');
 
+      const initialized = await isAnalyticsInitialized(projectPath);
+      if (initialized && !options.force) {
+        const action = await p.select({
+          message: 'Existing BlueprintData config found. What do you want to do?',
+          options: [
+            {
+              value: 'reuse',
+              label: 'Use existing config and rebuild agent context (recommended)',
+            },
+            {
+              value: 'recreate',
+              label: 'Recreate config and agent context (re-enter prompts)',
+            },
+            { value: 'cancel', label: 'Cancel' },
+          ],
+        });
+
+        if (p.isCancel(action) || action === 'cancel') {
+          p.cancel('Operation cancelled');
+          process.exit(0);
+        }
+
+        if (action === 'reuse') {
+          const s1 = p.spinner();
+          s1.start('Loading configuration');
+          const config = await loadConfig(projectPath);
+          s1.stop('✓ Configuration loaded');
+
+          const s2 = p.spinner();
+          s2.start('Connecting to warehouse');
+          const connector = await createWarehouseConnector(config.warehouseConnection);
+          let connectionOk = false;
+          try {
+            connectionOk = await connector.testConnection();
+            if (!connectionOk) {
+              s2.stop('❌ Connection failed');
+              throw new Error('Failed to connect to warehouse');
+            }
+            s2.stop('✓ Warehouse connection successful');
+          } catch (error) {
+            await connector.close();
+            throw error;
+          }
+
+          const s3 = p.spinner();
+          s3.start('Rebuilding agent context (this may take a few minutes)');
+          const builder = new ContextBuilder({
+            projectPath,
+            config,
+            connector,
+            force: true,
+          });
+          try {
+            await builder.build();
+            s3.stop('✓ Agent context rebuilt');
+          } finally {
+            await connector.close();
+          }
+
+          p.outro('🎉 Analytics agent initialized successfully!');
+
+          console.log('\nNext steps:');
+          console.log('  1. Review agent-context/ directory');
+          console.log('  2. Run: blueprintdata analytics chat');
+          console.log('  3. Start chatting with your analytics agent!\n');
+          return;
+        }
+
+        options.force = true;
+      }
+
       // Collect all inputs from user through prompts
-      const inputs = await collectInputs();
+      const inputs = await collectInputs(projectPath);
 
       // Create service and delegate to business logic
       const initService = ServiceFactory.createInitService();
 
-      // Show build progress
-      const s = p.spinner();
-      s.start('Building agent context (this may take a few minutes)');
+      p.log.step('Building agent context (this may take a few minutes)...');
 
       await initService.initialize({
         projectPath,
@@ -45,7 +125,7 @@ export const initCommand = new Command('init')
         ...inputs,
       });
 
-      s.stop('✓ Agent context created in agent-context/');
+      p.log.success('Agent context created in agent-context/');
 
       // Success message
       p.outro('🎉 Analytics agent initialized successfully!');
@@ -67,7 +147,9 @@ export const initCommand = new Command('init')
 /**
  * Collect all required inputs from user through prompts
  */
-async function collectInputs(): Promise<Omit<InitOptions, 'projectPath' | 'force'>> {
+async function collectInputs(
+  projectPath: string
+): Promise<Omit<InitOptions, 'projectPath' | 'force'>> {
   // dbt target environment
   const dbtTarget = await p.text({
     message: 'dbt target environment (optional):',
@@ -86,10 +168,13 @@ async function collectInputs(): Promise<Omit<InitOptions, 'projectPath' | 'force
   const { llmModel, llmProfilingModel } = await selectLLMModels(llmProvider);
 
   // Company context
-  const companyContext = await collectCompanyContext(process.cwd());
+  const companyContext = await collectCompanyContext(projectPath);
 
-  // Model selection
-  const modelSelection = await selectModelsForProfiling();
+  // Profiling scope (models/schemas)
+  const { modelSelection, schemaSelection } = await selectProfilingScope(
+    projectPath,
+    dbtTarget || undefined
+  );
 
   // Slack configuration (optional)
   const { slackBotToken, slackSigningSecret } = await configureSlack();
@@ -102,6 +187,7 @@ async function collectInputs(): Promise<Omit<InitOptions, 'projectPath' | 'force
     llmProfilingModel,
     companyContext,
     modelSelection,
+    schemaSelection,
     slackBotToken,
     slackSigningSecret,
     uiPort: DEFAULT_CONFIG.interface.uiPort,
@@ -189,8 +275,6 @@ async function selectLLMProvider(): Promise<{ llmProvider: LLMProvider; llmApiKe
 async function selectLLMModels(
   llmProvider: LLMProvider
 ): Promise<{ llmModel: string; llmProfilingModel: string }> {
-  p.log.step('Select LLM models for different tasks');
-
   const availableModels = getModelsForProvider(llmProvider);
   const modelOptions = availableModels.map((model) => formatModelOption(model));
 
@@ -228,8 +312,6 @@ async function selectLLMModels(
  * Collect company context information
  */
 async function collectCompanyContext(projectPath: string): Promise<CompanyContext | undefined> {
-  p.log.step('Company context helps the agent understand your business');
-
   const companyName = await p.text({
     message: 'Company name (optional):',
     placeholder: 'e.g., Acme Corp',
@@ -333,8 +415,6 @@ async function collectCompanyContext(projectPath: string): Promise<CompanyContex
  * Select models to profile
  */
 async function selectModelsForProfiling(): Promise<string | undefined> {
-  p.log.step('Model selection for profiling');
-
   const selectModels = await p.select({
     message: 'Which dbt models should be profiled?',
     options: [
@@ -408,6 +488,100 @@ async function selectModelsForProfiling(): Promise<string | undefined> {
   }
 
   return modelSelection;
+}
+
+/**
+ * Select profiling scope (models, schemas, or both)
+ */
+async function selectProfilingScope(
+  projectPath: string,
+  dbtTarget?: string
+): Promise<{ modelSelection?: string; schemaSelection?: string[] }> {
+  const schemas = await listWarehouseSchemas(projectPath, dbtTarget);
+  if (schemas.length > 0) {
+    p.log.info(`Available schemas: ${schemas.join(', ')}`);
+  }
+
+  const scope = await p.select({
+    message: 'How should we scope profiling?',
+    options: [
+      { value: 'dbt', label: 'Select dbt models (recommended)' },
+      { value: 'schemas', label: 'Select warehouse schemas' },
+      { value: 'both', label: 'Select dbt models and limit to schemas' },
+      { value: 'all', label: 'Profile everything' },
+    ],
+    initialValue: 'dbt',
+  });
+
+  if (p.isCancel(scope)) {
+    p.cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  if (scope === 'all') {
+    return {};
+  }
+
+  if (scope === 'dbt') {
+    const modelSelection = await selectModelsForProfiling();
+    return { modelSelection };
+  }
+
+  if (scope === 'schemas') {
+    const schemaSelection = await selectSchemasFromList(schemas);
+    return { schemaSelection };
+  }
+
+  const modelSelection = await selectModelsForProfiling();
+  const schemaSelection = await selectSchemasFromList(schemas);
+  return { modelSelection, schemaSelection };
+}
+
+async function listWarehouseSchemas(projectPath: string, dbtTarget?: string): Promise<string[]> {
+  try {
+    const warehouseConnection = await getWarehouseConnectionFromDbt(
+      projectPath,
+      undefined,
+      dbtTarget
+    );
+    const connector = await createWarehouseConnector(warehouseConnection);
+    try {
+      return await connector.listSchemas();
+    } finally {
+      await connector.close();
+    }
+  } catch (error) {
+    p.log.warn('Unable to list schemas. You can still select models.');
+    return [];
+  }
+}
+
+async function selectSchemasFromList(schemas: string[]): Promise<string[] | undefined> {
+  if (schemas.length === 0) {
+    p.log.warn('No schemas found. Profiling will include all schemas.');
+    return undefined;
+  }
+
+  const schemaOptions = schemas.map((schema) => ({ value: schema, label: schema }));
+  const defaultSelection = schemas.includes('MARTS') ? ['MARTS'] : undefined;
+  const selectedSchemas = await p.multiselect({
+    message: 'Select schemas to profile:',
+    options: [{ value: '__all__', label: 'All schemas' }, ...schemaOptions],
+    initialValues: defaultSelection,
+    required: true,
+  });
+
+  if (p.isCancel(selectedSchemas)) {
+    p.cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  const selected = selectedSchemas as string[];
+  if (selected.includes('__all__')) {
+    return undefined;
+  }
+
+  return Array.from(new Set(selected));
 }
 
 /**

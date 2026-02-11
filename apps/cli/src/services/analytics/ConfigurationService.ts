@@ -17,6 +17,7 @@ export interface ConfigurationOptions {
   warehouseConnection: WarehouseConnection;
   companyContext?: CompanyContext;
   modelSelection?: string;
+  schemaSelection?: string[];
   slackBotToken?: string;
   slackSigningSecret?: string;
   uiPort?: number;
@@ -47,6 +48,7 @@ export class ConfigurationService {
           ? options.companyContext
           : undefined,
       modelSelection: options.modelSelection,
+      schemaSelection: options.schemaSelection,
       slackBotToken: options.slackBotToken,
       slackSigningSecret: options.slackSigningSecret,
       uiPort: options.uiPort || 3000,

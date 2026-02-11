@@ -18,11 +18,11 @@ describe('Config Migration Integration', () => {
     const v1Config = createMockConfigV1({
       projectPath: testProject.path,
       llmProvider: 'anthropic',
-      llmModel: 'claude-3-5-sonnet-20241022',
+      llmModel: 'claude-sonnet-4-5',
       warehouseType: 'postgres',
       companyContext: {
-        companyName: 'Test Company',
-        companyDescription: 'Test description',
+        name: 'Test Company',
+        userContext: 'Test description',
       },
     });
 
@@ -33,9 +33,9 @@ describe('Config Migration Integration', () => {
     expect(loadedConfig.version).toBe(2);
     expect(loadedConfig.project.projectPath).toBe(testProject.path);
     expect(loadedConfig.llm.provider).toBe('anthropic');
-    expect(loadedConfig.llm.chatModel).toBe('claude-3-5-sonnet-20241022');
+    expect(loadedConfig.llm.chatModel).toBe('claude-sonnet-4-5');
     expect(loadedConfig.warehouse.type).toBe('postgres');
-    expect(loadedConfig.company?.context.companyName).toBe('Test Company');
+    expect(loadedConfig.company?.context.name).toBe('Test Company');
   });
 
   it('should persist migrated config back to disk', async () => {
@@ -56,13 +56,13 @@ describe('Config Migration Integration', () => {
       projectPath: testProject.path,
       dbtTarget: 'production',
       llmProvider: 'openai',
-      llmModel: 'gpt-4o',
-      llmProfilingModel: 'gpt-4o-mini',
+      llmModel: 'gpt-5.2',
+      llmProfilingModel: 'gpt-5-mini',
       warehouseType: 'bigquery',
       companyContext: {
-        companyName: 'Custom Company',
-        companyDescription: 'Custom description',
-        companyWebsite: 'https://custom.com',
+        name: 'Custom Company',
+        userContext: 'Custom description',
+        websites: ['https://custom.com'],
       },
       modelSelection: 'staging',
       slackBotToken: 'xoxb-test',
@@ -77,12 +77,12 @@ describe('Config Migration Integration', () => {
 
     expect(loadedConfig.project.dbtTarget).toBe('production');
     expect(loadedConfig.llm.provider).toBe('openai');
-    expect(loadedConfig.llm.chatModel).toBe('gpt-4o');
-    expect(loadedConfig.llm.profilingModel).toBe('gpt-4o-mini');
+    expect(loadedConfig.llm.chatModel).toBe('gpt-5.2');
+    expect(loadedConfig.llm.profilingModel).toBe('gpt-5-mini');
     expect(loadedConfig.warehouse.type).toBe('bigquery');
-    expect(loadedConfig.company?.context.companyName).toBe('Custom Company');
-    expect(loadedConfig.company?.context.companyDescription).toBe('Custom description');
-    expect(loadedConfig.company?.context.companyWebsite).toBe('https://custom.com');
+    expect(loadedConfig.company?.context.name).toBe('Custom Company');
+    expect(loadedConfig.company?.context.userContext).toBe('Custom description');
+    expect(loadedConfig.company?.context.websites?.[0]).toBe('https://custom.com');
     expect(loadedConfig.company?.modelSelection).toBe('staging');
     expect(loadedConfig.slack?.botToken).toBe('xoxb-test');
     expect(loadedConfig.slack?.signingSecret).toBe('secret');

@@ -46,13 +46,18 @@ export class LLMClient {
    * Generate a completion from a prompt
    */
   async generate(prompt: string, options?: GenerateOptions): Promise<GenerateResult> {
-    const temperature = options?.temperature ?? 0.7;
     const maxTokens = options?.maxTokens ?? 4096;
 
     if (this.provider === 'anthropic') {
+      const temperature = options?.temperature ?? 0.7;
       return await this.generateAnthropic(prompt, options?.systemPrompt, temperature, maxTokens);
     } else if (this.provider === 'openai') {
-      return await this.generateOpenAI(prompt, options?.systemPrompt, temperature, maxTokens);
+      return await this.generateOpenAI(
+        prompt,
+        options?.systemPrompt,
+        options?.temperature,
+        maxTokens
+      );
     }
 
     throw new Error(`Unsupported LLM provider: ${this.provider}`);
@@ -103,7 +108,7 @@ export class LLMClient {
   private async generateOpenAI(
     prompt: string,
     systemPrompt?: string,
-    temperature: number = 0.7,
+    temperature?: number,
     maxTokens: number = 4096
   ): Promise<GenerateResult> {
     if (!this.openaiClient) {
@@ -127,8 +132,8 @@ export class LLMClient {
     const response = await this.openaiClient.chat.completions.create({
       model: this.modelId,
       messages,
-      temperature,
-      max_tokens: maxTokens,
+      max_completion_tokens: maxTokens,
+      ...(temperature === 1 ? { temperature } : {}),
     });
 
     const content = response.choices[0]?.message?.content || '';

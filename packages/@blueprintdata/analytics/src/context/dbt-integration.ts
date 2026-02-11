@@ -65,7 +65,7 @@ export class DbtIntegration {
       return true;
     }
 
-    console.log('  Running dbt parse to generate manifest...');
+    this.logVerbose('  Running dbt parse to generate manifest...');
 
     try {
       await this.runDbtCommand(['parse']);
@@ -175,7 +175,7 @@ export class DbtIntegration {
   async getModelTableName(modelName: string): Promise<string | null> {
     const manifest = await this.loadManifest();
     if (!manifest) {
-      console.log(`  Debug: No manifest found`);
+      this.logVerbose(`  Debug: No manifest found`);
       return null;
     }
 
@@ -185,8 +185,8 @@ export class DbtIntegration {
     );
 
     if (!modelNode) {
-      console.log(`  Debug: Model '${modelName}' not found in manifest`);
-      console.log(
+      this.logVerbose(`  Debug: Model '${modelName}' not found in manifest`);
+      this.logVerbose(
         `  Debug: Available models: ${Object.values(manifest.nodes)
           .filter((n) => n.resource_type === 'model')
           .map((n) => n.name)
@@ -196,8 +196,8 @@ export class DbtIntegration {
     }
 
     const tableName = `${modelNode.database}.${modelNode.schema}.${modelNode.alias}`;
-    console.log(`  Debug: Resolved '${modelName}' to '${tableName}'`);
-    console.log(
+    this.logVerbose(`  Debug: Resolved '${modelName}' to '${tableName}'`);
+    this.logVerbose(
       `  Debug: Model details - database: ${modelNode.database}, schema: ${modelNode.schema}, alias: ${modelNode.alias}`
     );
 
@@ -214,6 +214,40 @@ export class DbtIntegration {
     return Object.values(manifest.nodes)
       .filter((node) => node.resource_type === 'model')
       .map((node) => node.name);
+  }
+
+  /**
+   * Resolve dbt selection syntax to model names
+   */
+  async resolveModelSelection(selection: string): Promise<string[]> {
+    if (!selection || selection.trim().length === 0) {
+      return [];
+    }
+
+    try {
+      const output = await this.runDbtCommandForOutput([
+        'ls',
+        '--resource-type',
+        'model',
+        '--select',
+        selection,
+        '--output',
+        'name',
+        '--quiet',
+      ]);
+
+      return output
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .filter((line) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(line));
+    } catch (error) {
+      console.warn('  Warning: dbt selection failed, falling back to raw model names');
+      return selection
+        .split(',')
+        .map((model) => model.trim())
+        .filter((model) => model.length > 0);
+    }
   }
 
   /**
@@ -336,7 +370,7 @@ export class DbtIntegration {
       // Add --target flag if specified
       const dbtArgs = this.target ? [...args, '--target', this.target] : args;
 
-      console.log(`  Running: dbt ${dbtArgs.join(' ')}`);
+      this.logVerbose(`  Running: dbt ${dbtArgs.join(' ')}`);
 
       const result = await execa('dbt', dbtArgs, {
         cwd: this.projectPath,
@@ -344,8 +378,30 @@ export class DbtIntegration {
       });
 
       if (result.stdout) {
-        console.log(`  dbt output: ${result.stdout.substring(0, 200)}`);
+        this.logVerbose(`  dbt output: ${result.stdout.substring(0, 200)}`);
       }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`dbt command failed: ${error.message}`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Run a dbt command and return stdout
+   */
+  private async runDbtCommandForOutput(args: string[]): Promise<string> {
+    try {
+      const dbtArgs = this.target ? [...args, '--target', this.target] : args;
+      this.logVerbose(`  Running: dbt ${dbtArgs.join(' ')}`);
+
+      const result = await execa('dbt', dbtArgs, {
+        cwd: this.projectPath,
+        stdio: 'pipe',
+      });
+
+      return result.stdout || '';
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`dbt command failed: ${error.message}`);
@@ -363,6 +419,12 @@ export class DbtIntegration {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  private logVerbose(message: string): void {
+    if (process.env.BLUEPRINTDATA_VERBOSE === '1') {
+      console.log(message);
     }
   }
 }

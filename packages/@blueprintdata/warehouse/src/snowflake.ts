@@ -5,9 +5,17 @@ import { WarehouseConnection } from '@blueprintdata/models';
 export class SnowflakeConnector extends BaseWarehouseConnector {
   private client: snowflake.Connection;
   private connected = false;
+  private static configured = false;
 
   constructor(connection: WarehouseConnection) {
     super(connection);
+
+    if (!SnowflakeConnector.configured) {
+      const logLevel: snowflake.LogLevel =
+        process.env.BLUEPRINTDATA_VERBOSE === '1' ? 'INFO' : 'OFF';
+      snowflake.configure({ logLevel });
+      SnowflakeConnector.configured = true;
+    }
 
     if (connection.type !== 'snowflake') {
       throw new Error('Invalid connection type for Snowflake connector');
@@ -88,9 +96,10 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
       const columnResult = await this.query(columnQuery, [schemaName, tableName]);
 
       const columns: ColumnInfo[] = columnResult.rows.map((row) => ({
-        name: row.column_name as string,
-        type: row.data_type as string,
-        nullable: String(row.is_nullable).toUpperCase() === 'YES',
+        name: String(this.getRowValue(row, 'column_name', 'COLUMN_NAME') ?? ''),
+        type: String(this.getRowValue(row, 'data_type', 'DATA_TYPE') ?? ''),
+        nullable:
+          String(this.getRowValue(row, 'is_nullable', 'IS_NULLABLE') ?? '').toUpperCase() === 'YES',
       }));
 
       let rowCount: number | undefined;
@@ -99,7 +108,7 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
           schemaName
         )}.${this.quoteIdentifier(tableName)}`;
         const result = await this.query(countQuery);
-        const countValue = result.rows[0]?.count ?? result.rows[0]?.COUNT;
+        const countValue = this.getRowValue(result.rows[0] ?? {}, 'count', 'COUNT');
         if (countValue !== undefined) {
           rowCount = Number(countValue);
         }
@@ -115,7 +124,7 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
           WHERE table_schema = ? AND table_name = ?
         `;
         const result = await this.query(sizeQuery, [schemaName, tableName]);
-        const sizeValue = result.rows[0]?.bytes ?? result.rows[0]?.BYTES;
+        const sizeValue = this.getRowValue(result.rows[0] ?? {}, 'bytes', 'BYTES');
         if (sizeValue !== undefined) {
           sizeInBytes = Number(sizeValue);
         }
@@ -154,10 +163,12 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
       const params = schemaName ? [schemaName] : undefined;
       const result = await this.query(query, params);
 
-      return result.rows.map((row) => ({
-        schemaName: row.table_schema as string,
-        tableName: row.table_name as string,
-      }));
+      return result.rows
+        .map((row) => ({
+          schemaName: String(this.getRowValue(row, 'table_schema', 'TABLE_SCHEMA') ?? ''),
+          tableName: String(this.getRowValue(row, 'table_name', 'TABLE_NAME') ?? ''),
+        }))
+        .filter((row) => row.schemaName && row.tableName);
     } catch (error) {
       throw new Error(
         `Failed to list Snowflake tables: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -176,7 +187,9 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
       `;
 
       const result = await this.query(query);
-      return result.rows.map((row) => row.schema_name as string);
+      return result.rows
+        .map((row) => String(this.getRowValue(row, 'schema_name', 'SCHEMA_NAME') ?? ''))
+        .filter((schema) => schema);
     } catch (error) {
       throw new Error(
         `Failed to list Snowflake schemas: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -250,6 +263,30 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
 
   private quoteIdentifier(value: string): string {
     return `"${value.replace(/"/g, '""')}"`;
+  }
+
+  private getRowValue(row: Record<string, unknown>, ...keys: string[]): unknown {
+    for (const key of keys) {
+      if (key in row) {
+        return row[key];
+      }
+
+      const lowerKey = key.toLowerCase();
+      const upperKey = key.toUpperCase();
+      if (lowerKey in row) {
+        return row[lowerKey];
+      }
+      if (upperKey in row) {
+        return row[upperKey];
+      }
+
+      const match = Object.keys(row).find((rowKey) => rowKey.toLowerCase() === lowerKey);
+      if (match) {
+        return row[match];
+      }
+    }
+
+    return undefined;
   }
 
   private normalizeAuthenticator(

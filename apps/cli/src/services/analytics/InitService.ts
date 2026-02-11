@@ -1,6 +1,11 @@
 import { createWarehouseConnector } from '@blueprintdata/warehouse';
 import { ContextBuilder } from '@blueprintdata/analytics';
-import { AnalyticsConfig, WarehouseConnection, LLMProvider, CompanyContext } from '@blueprintdata/models';
+import {
+  AnalyticsConfig,
+  WarehouseConnection,
+  LLMProvider,
+  CompanyContext,
+} from '@blueprintdata/models';
 import { validateDbtProject } from '../../utils/validation.js';
 import { getWarehouseConnectionFromDbt } from '../../utils/env.js';
 import { isAnalyticsInitialized } from '../../utils/config.js';
@@ -23,6 +28,7 @@ export interface InitOptions {
   llmProfilingModel: string;
   companyContext?: CompanyContext;
   modelSelection?: string;
+  schemaSelection?: string[];
   slackBotToken?: string;
   slackSigningSecret?: string;
   uiPort?: number;
@@ -39,9 +45,7 @@ export interface InitResult {
  * Service for initializing analytics agent in a dbt project
  */
 export class InitService {
-  constructor(
-    private configService: ConfigurationService = new ConfigurationService()
-  ) {}
+  constructor(private configService: ConfigurationService = new ConfigurationService()) {}
 
   /**
    * Initialize analytics agent
@@ -67,6 +71,7 @@ export class InitService {
       warehouseConnection,
       companyContext: options.companyContext,
       modelSelection: options.modelSelection,
+      schemaSelection: options.schemaSelection,
       slackBotToken: options.slackBotToken,
       slackSigningSecret: options.slackSigningSecret,
       uiPort: options.uiPort,

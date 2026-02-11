@@ -8,7 +8,7 @@ const mockAnthropicCreate = mock(async () => ({
   type: 'message',
   role: 'assistant',
   content: [{ type: 'text' as const, text: 'Mocked Anthropic response' }],
-  model: 'claude-3-5-sonnet-20241022',
+  model: 'claude-sonnet-4-5',
   stop_reason: 'end_turn',
   stop_sequence: null,
   usage: {
@@ -21,7 +21,7 @@ const mockOpenAICreate = mock(async () => ({
   id: 'chatcmpl-test',
   object: 'chat.completion',
   created: Date.now(),
-  model: 'gpt-4o',
+  model: 'gpt-5.2',
   choices: [
     {
       index: 0,
@@ -70,23 +70,23 @@ describe('LLMClient', () => {
 
   describe('constructor', () => {
     it('should create Anthropic client', () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-3-5-sonnet-20241022');
+      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
 
       expect(client.getProvider()).toBe('anthropic');
-      expect(client.getModelId()).toBe('claude-3-5-sonnet-20241022');
+      expect(client.getModelId()).toBe('claude-sonnet-4-5');
     });
 
     it('should create OpenAI client', () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-4o');
+      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
 
       expect(client.getProvider()).toBe('openai');
-      expect(client.getModelId()).toBe('gpt-4o');
+      expect(client.getModelId()).toBe('gpt-5.2');
     });
   });
 
   describe('generate - Anthropic', () => {
     it('should generate completion with Anthropic', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-3-5-sonnet-20241022');
+      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
 
       const result = await client.generate('Test prompt');
 
@@ -97,7 +97,7 @@ describe('LLMClient', () => {
     });
 
     it('should pass temperature and maxTokens to Anthropic', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-3-5-sonnet-20241022');
+      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
 
       await client.generate('Test prompt', { temperature: 0.5, maxTokens: 2000 });
 
@@ -110,7 +110,7 @@ describe('LLMClient', () => {
     });
 
     it('should pass system prompt to Anthropic', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-3-5-sonnet-20241022');
+      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
 
       await client.generate('Test prompt', { systemPrompt: 'You are a helpful assistant' });
 
@@ -122,7 +122,7 @@ describe('LLMClient', () => {
     });
 
     it('should use default temperature and maxTokens', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-3-5-sonnet-20241022');
+      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
 
       await client.generate('Test prompt');
 
@@ -135,7 +135,7 @@ describe('LLMClient', () => {
     });
 
     it('should format messages correctly for Anthropic', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-3-5-sonnet-20241022');
+      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
 
       await client.generate('Test prompt');
 
@@ -152,7 +152,7 @@ describe('LLMClient', () => {
     });
 
     it('should handle Anthropic error', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-3-5-sonnet-20241022');
+      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
 
       mockAnthropicCreate.mockRejectedValueOnce(new Error('API error'));
 
@@ -162,7 +162,7 @@ describe('LLMClient', () => {
 
   describe('generate - OpenAI', () => {
     it('should generate completion with OpenAI', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-4o');
+      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
 
       const result = await client.generate('Test prompt');
 
@@ -172,21 +172,20 @@ describe('LLMClient', () => {
       expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
     });
 
-    it('should pass temperature and maxTokens to OpenAI', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-4o');
+    it('should pass maxTokens to OpenAI', async () => {
+      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
 
       await client.generate('Test prompt', { temperature: 0.8, maxTokens: 1000 });
 
       expect(mockOpenAICreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          temperature: 0.8,
-          max_tokens: 1000,
+          max_completion_tokens: 1000,
         })
       );
     });
 
     it('should pass system prompt to OpenAI', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-4o');
+      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
 
       await client.generate('Test prompt', { systemPrompt: 'You are a helpful assistant' });
 
@@ -201,7 +200,7 @@ describe('LLMClient', () => {
     });
 
     it('should not include system message when not provided', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-4o');
+      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
 
       await client.generate('Test prompt');
 
@@ -213,7 +212,7 @@ describe('LLMClient', () => {
     });
 
     it('should handle OpenAI error', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-4o');
+      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
 
       mockOpenAICreate.mockRejectedValueOnce(new Error('API rate limit'));
 
@@ -221,13 +220,13 @@ describe('LLMClient', () => {
     });
 
     it('should handle empty response content', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-4o');
+      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
 
       mockOpenAICreate.mockResolvedValueOnce({
         id: 'chatcmpl-test',
         object: 'chat.completion',
         created: Date.now(),
-        model: 'gpt-4o',
+        model: 'gpt-5.2',
         choices: [
           {
             index: 0,
@@ -243,7 +242,7 @@ describe('LLMClient', () => {
           completion_tokens: 0,
           total_tokens: 10,
         },
-      });
+      } as any);
 
       const result = await client.generate('Test prompt');
 
@@ -253,13 +252,13 @@ describe('LLMClient', () => {
     });
 
     it('should handle missing usage data', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-4o');
+      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
 
       mockOpenAICreate.mockResolvedValueOnce({
         id: 'chatcmpl-test',
         object: 'chat.completion',
         created: Date.now(),
-        model: 'gpt-4o',
+        model: 'gpt-5.2',
         choices: [
           {
             index: 0,
@@ -271,7 +270,7 @@ describe('LLMClient', () => {
           },
         ],
         usage: undefined,
-      });
+      } as any);
 
       const result = await client.generate('Test prompt');
 
@@ -282,17 +281,17 @@ describe('LLMClient', () => {
 
   describe('createLLMClient factory', () => {
     it('should create Anthropic client', () => {
-      const client = createLLMClient('anthropic', 'test-key', 'claude-3-5-sonnet-20241022');
+      const client = createLLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
 
       expect(client.getProvider()).toBe('anthropic');
-      expect(client.getModelId()).toBe('claude-3-5-sonnet-20241022');
+      expect(client.getModelId()).toBe('claude-sonnet-4-5');
     });
 
     it('should create OpenAI client', () => {
-      const client = createLLMClient('openai', 'sk-test-key', 'gpt-4o');
+      const client = createLLMClient('openai', 'sk-test-key', 'gpt-5.2');
 
       expect(client.getProvider()).toBe('openai');
-      expect(client.getModelId()).toBe('gpt-4o');
+      expect(client.getModelId()).toBe('gpt-5.2');
     });
   });
 
@@ -306,13 +305,13 @@ describe('LLMClient', () => {
 
   describe('getters', () => {
     it('should return correct model ID', () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-3-5-sonnet-20241022');
+      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
 
-      expect(client.getModelId()).toBe('claude-3-5-sonnet-20241022');
+      expect(client.getModelId()).toBe('claude-sonnet-4-5');
     });
 
     it('should return correct provider', () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-4o');
+      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
 
       expect(client.getProvider()).toBe('openai');
     });

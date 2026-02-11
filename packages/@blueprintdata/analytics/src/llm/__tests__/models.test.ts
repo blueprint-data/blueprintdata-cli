@@ -33,18 +33,18 @@ describe('LLM Models', () => {
 
   describe('getModel', () => {
     it('should get Anthropic model by ID', () => {
-      const model = getModel('claude-3-5-sonnet-20241022');
+      const model = getModel('claude-sonnet-4-5');
 
       expect(model).toBeDefined();
-      expect(model?.id).toBe('claude-3-5-sonnet-20241022');
+      expect(model?.id).toBe('claude-sonnet-4-5');
       expect(model?.provider).toBe('anthropic');
     });
 
     it('should get OpenAI model by ID', () => {
-      const model = getModel('gpt-4o');
+      const model = getModel('gpt-5.2');
 
       expect(model).toBeDefined();
-      expect(model?.id).toBe('gpt-4o');
+      expect(model?.id).toBe('gpt-5.2');
       expect(model?.provider).toBe('openai');
     });
 
@@ -90,18 +90,18 @@ describe('LLM Models', () => {
 
   describe('validateModel', () => {
     it('should validate correct Anthropic models', () => {
-      expect(validateModel('claude-3-5-sonnet-20241022', 'anthropic')).toBe(true);
-      expect(validateModel('claude-3-5-haiku-20241022', 'anthropic')).toBe(true);
+      expect(validateModel('claude-sonnet-4-5', 'anthropic')).toBe(true);
+      expect(validateModel('claude-haiku-4-5', 'anthropic')).toBe(true);
     });
 
     it('should validate correct OpenAI models', () => {
-      expect(validateModel('gpt-4o', 'openai')).toBe(true);
-      expect(validateModel('gpt-4o-mini', 'openai')).toBe(true);
+      expect(validateModel('gpt-5.2', 'openai')).toBe(true);
+      expect(validateModel('gpt-5-mini', 'openai')).toBe(true);
     });
 
     it('should reject incorrect model for provider', () => {
-      expect(validateModel('gpt-4o', 'anthropic')).toBe(false);
-      expect(validateModel('claude-3-5-sonnet-20241022', 'openai')).toBe(false);
+      expect(validateModel('gpt-5.2', 'anthropic')).toBe(false);
+      expect(validateModel('claude-sonnet-4-5', 'openai')).toBe(false);
     });
 
     it('should reject unknown models', () => {
@@ -112,7 +112,7 @@ describe('LLM Models', () => {
 
   describe('formatModelOption', () => {
     it('should format model with recommendation', () => {
-      const model = getModel('claude-3-5-sonnet-20241022');
+      const model = getModel('claude-sonnet-4-5');
       if (!model) throw new Error('Model not found');
 
       const formatted = formatModelOption(model);
@@ -123,7 +123,7 @@ describe('LLM Models', () => {
     });
 
     it('should format model without recommendation', () => {
-      const model = getModel('claude-3-opus-20240229');
+      const model = getModel('claude-opus-4-6');
       if (!model) throw new Error('Model not found');
 
       const formatted = formatModelOption(model);
@@ -133,7 +133,7 @@ describe('LLM Models', () => {
     });
 
     it('should include cost information in hint', () => {
-      const model = getModel('claude-3-5-haiku-20241022');
+      const model = getModel('claude-haiku-4-5');
       if (!model) throw new Error('Model not found');
 
       const formatted = formatModelOption(model);
@@ -143,7 +143,7 @@ describe('LLM Models', () => {
     });
 
     it('should include context window in hint', () => {
-      const model = getModel('gpt-4o');
+      const model = getModel('gpt-5.2');
       if (!model) throw new Error('Model not found');
 
       const formatted = formatModelOption(model);
@@ -154,19 +154,19 @@ describe('LLM Models', () => {
 
   describe('estimateCost', () => {
     it('should calculate cost for Anthropic Sonnet', () => {
-      const cost = estimateCost('claude-3-5-sonnet-20241022', 1_000_000, 1_000_000);
+      const cost = estimateCost('claude-sonnet-4-5', 1_000_000, 1_000_000);
 
       expect(cost).toBe(18.0); // $3 input + $15 output
     });
 
     it('should calculate cost for Anthropic Haiku', () => {
-      const cost = estimateCost('claude-3-5-haiku-20241022', 1_000_000, 1_000_000);
+      const cost = estimateCost('claude-haiku-4-5', 1_000_000, 1_000_000);
 
       expect(cost).toBe(6.0); // $1 input + $5 output
     });
 
     it('should calculate cost for smaller token counts', () => {
-      const cost = estimateCost('claude-3-5-sonnet-20241022', 100_000, 50_000);
+      const cost = estimateCost('claude-sonnet-4-5', 100_000, 50_000);
 
       expect(cost).toBeCloseTo(1.05, 2); // $0.30 input + $0.75 output
     });
@@ -178,13 +178,13 @@ describe('LLM Models', () => {
     });
 
     it('should handle zero tokens', () => {
-      const cost = estimateCost('claude-3-5-sonnet-20241022', 0, 0);
+      const cost = estimateCost('claude-sonnet-4-5', 0, 0);
 
       expect(cost).toBe(0);
     });
 
     it('should calculate asymmetric input/output costs correctly', () => {
-      const cost = estimateCost('claude-3-5-sonnet-20241022', 2_000_000, 500_000);
+      const cost = estimateCost('claude-sonnet-4-5', 2_000_000, 500_000);
 
       expect(cost).toBe(13.5); // $6 input + $7.5 output
     });

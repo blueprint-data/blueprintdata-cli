@@ -1,4 +1,5 @@
-import { AnalyticsConfig, AnalyticsConfigV2, LLMProvider, CompanyContext } from '@blueprintdata/models';
+import { AnalyticsConfig, LLMProvider, CompanyContext } from '@blueprintdata/models';
+import type { AnalyticsConfigV2 } from '@blueprintdata/config';
 
 /**
  * Create a mock V2 configuration for testing
@@ -14,8 +15,8 @@ export function createMockConfigV2(overrides?: Partial<AnalyticsConfigV2>): Anal
     llm: {
       provider: 'anthropic',
       apiKey: 'test-api-key',
-      chatModel: 'claude-3-5-sonnet-20241022',
-      profilingModel: 'claude-3-5-haiku-20241022',
+      chatModel: 'claude-sonnet-4-5',
+      profilingModel: 'claude-haiku-4-5',
     },
     warehouse: {
       type: 'postgres',
@@ -56,8 +57,8 @@ export function createMockConfigV1(overrides?: Partial<AnalyticsConfig>): Analyt
     dbtTarget: undefined,
     llmProvider: 'anthropic' as LLMProvider,
     llmApiKey: 'test-api-key',
-    llmModel: 'claude-3-5-sonnet-20241022',
-    llmProfilingModel: 'claude-3-5-haiku-20241022',
+    llmModel: 'claude-sonnet-4-5',
+    llmProfilingModel: 'claude-haiku-4-5',
     warehouseType: 'postgres',
     warehouseConnection: {
       type: 'postgres',
@@ -67,9 +68,7 @@ export function createMockConfigV1(overrides?: Partial<AnalyticsConfig>): Analyt
       password: 'test_password',
       database: 'test_db',
     },
-    companyName: undefined,
-    companyDescription: undefined,
-    companyWebsite: undefined,
+    companyContext: undefined,
     modelSelection: undefined,
     slackBotToken: undefined,
     slackSigningSecret: undefined,
@@ -95,9 +94,9 @@ export function createMockConfigWithBigQuery(
       type: 'bigquery',
       connection: {
         type: 'bigquery',
-        project: 'test-project',
-        dataset: 'test_dataset',
-        keyfilePath: '/path/to/keyfile.json',
+        projectId: 'test-project',
+        database: 'test_dataset',
+        keyFilePath: '/path/to/keyfile.json',
       },
     },
   });
@@ -114,8 +113,8 @@ export function createMockConfigWithOpenAI(
     llm: {
       provider: 'openai',
       apiKey: 'test-openai-key',
-      chatModel: 'gpt-4o',
-      profilingModel: 'gpt-4o-mini',
+      chatModel: 'gpt-5.2',
+      profilingModel: 'gpt-5-mini',
     },
   });
 }
@@ -130,9 +129,9 @@ export function createMockConfigWithCompany(
     ...overrides,
     company: {
       context: {
-        companyName: 'Test Company',
-        companyDescription: 'A test company for testing',
-        companyWebsite: 'https://test.com',
+        name: 'Test Company',
+        userContext: 'A test company for testing',
+        websites: ['https://test.com'],
       },
       modelSelection: 'all',
     },
@@ -157,13 +156,11 @@ export function createMockConfigWithSlack(
 /**
  * Create a mock company context for testing
  */
-export function createMockCompanyContext(
-  overrides?: Partial<CompanyContext>
-): CompanyContext {
+export function createMockCompanyContext(overrides?: Partial<CompanyContext>): CompanyContext {
   return {
-    companyName: 'Test Company',
-    companyDescription: 'A test company for testing',
-    companyWebsite: 'https://test.com',
+    name: 'Test Company',
+    userContext: 'A test company for testing',
+    websites: ['https://test.com'],
     ...overrides,
   };
 }

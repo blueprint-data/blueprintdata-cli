@@ -2,7 +2,8 @@ import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import yaml from 'yaml';
-import { AnalyticsConfig, AnalyticsConfigV2 } from '@blueprintdata/models';
+import { AnalyticsConfig } from '@blueprintdata/models';
+import type { AnalyticsConfigV2 } from '@blueprintdata/config';
 
 /**
  * Helper class for creating test dbt projects in temporary directories
@@ -13,19 +14,21 @@ export class TestDbtProject {
   /**
    * Create a new test dbt project with default structure
    */
-  static async create(options: {
-    projectName?: string;
-    includeProfiles?: boolean;
-    includeManifest?: boolean;
-  } = {}): Promise<TestDbtProject> {
+  static async create(
+    options: {
+      projectName?: string;
+      includeProfiles?: boolean;
+      includeManifest?: boolean;
+    } = {}
+  ): Promise<TestDbtProject> {
     const {
       projectName = 'test_project',
       includeProfiles = true,
       includeManifest = false,
     } = options;
 
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-dbt-'));
-    const project = new TestDbtProject(tempDir);
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-dbt-'), 'utf-8');
+    const project = new TestDbtProject(tempDir.toString());
 
     await project.createDbtProjectFile(projectName);
     await project.createModelsDirectory();
@@ -156,11 +159,7 @@ export class TestDbtProject {
   /**
    * Add a dbt model to the project
    */
-  async addModel(
-    name: string,
-    sql: string,
-    subdirectory?: string
-  ): Promise<void> {
+  async addModel(name: string, sql: string, subdirectory?: string): Promise<void> {
     const modelDir = subdirectory
       ? path.join(this.path, 'models', subdirectory)
       : path.join(this.path, 'models');
@@ -269,7 +268,8 @@ export class TestDbtProject {
     const fullPath = path.join(this.path, relativePath);
     const exists = await fs.pathExists(fullPath);
     if (!exists) return [];
-    return fs.readdir(fullPath);
+    const entries = await fs.readdir(fullPath, { encoding: 'utf-8' });
+    return entries.map((entry) => entry.toString());
   }
 
   /**
@@ -297,10 +297,7 @@ export async function createTestDbtProject(options?: {
   });
 
   for (let i = 1; i <= modelCount; i++) {
-    await project.addModel(
-      `model_${i}.sql`,
-      `SELECT * FROM {{ ref('source_table_${i}') }}`
-    );
+    await project.addModel(`model_${i}.sql`, `SELECT * FROM {{ ref('source_table_${i}') }}`);
   }
 
   await project.addSource(
@@ -338,8 +335,8 @@ export async function createInitializedTestProject(
     llm: {
       provider: 'anthropic',
       apiKey: 'test-key',
-      chatModel: 'claude-3-5-sonnet-20241022',
-      profilingModel: 'claude-3-5-haiku-20241022',
+      chatModel: 'claude-sonnet-4-5',
+      profilingModel: 'claude-haiku-4-5',
     },
     warehouse: {
       type: 'postgres',
