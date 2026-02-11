@@ -25,6 +25,9 @@ export const createWarehouseConnector = async (
   if (connection.type === 'bigquery') {
     const { BigQueryConnector } = await import('./bigquery.js');
     return new BigQueryConnector(connection);
+  } else if (connection.type === 'snowflake') {
+    const { SnowflakeConnector } = await import('./snowflake.js');
+    return new SnowflakeConnector(connection);
   } else if (connection.type === 'postgres') {
     const { PostgresConnector } = await import('./postgres.js');
     return new PostgresConnector(connection);

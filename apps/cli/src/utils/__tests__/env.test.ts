@@ -40,7 +40,7 @@ describe('Environment Utils', () => {
       const profilesPath = path.join(testProject.path, 'profiles.yml');
       await fs.writeFile(profilesPath, 'test_project:\n  target: dev', 'utf-8');
 
-      const exists = await profilesExist(profilesPath);
+      const exists = await profilesExist(testProject.path, profilesPath);
 
       expect(exists).toBe(true);
     });
@@ -48,7 +48,7 @@ describe('Environment Utils', () => {
     it('should return false when profiles.yml does not exist', async () => {
       const profilesPath = path.join(testProject.path, 'nonexistent.yml');
 
-      const exists = await profilesExist(profilesPath);
+      const exists = await profilesExist(testProject.path, profilesPath);
 
       expect(exists).toBe(false);
     });
@@ -82,7 +82,7 @@ test_project:
         'utf-8'
       );
 
-      const profiles = await parseProfiles(profilesPath);
+      const profiles = await parseProfiles(testProject.path, profilesPath);
 
       expect(profiles.test_project).toBeDefined();
       expect(profiles.test_project.target).toBe('dev');
@@ -93,14 +93,18 @@ test_project:
     it('should throw error when profiles.yml does not exist', async () => {
       const profilesPath = path.join(testProject.path, 'nonexistent.yml');
 
-      await expect(parseProfiles(profilesPath)).rejects.toThrow('dbt profiles.yml not found');
+      await expect(parseProfiles(testProject.path, profilesPath)).rejects.toThrow(
+        'dbt profiles.yml not found'
+      );
     });
 
     it('should throw error for invalid YAML', async () => {
       const profilesPath = path.join(testProject.path, 'profiles.yml');
       await fs.writeFile(profilesPath, 'invalid: yaml: content:', 'utf-8');
 
-      await expect(parseProfiles(profilesPath)).rejects.toThrow('Failed to parse profiles.yml');
+      await expect(parseProfiles(testProject.path, profilesPath)).rejects.toThrow(
+        'Failed to parse profiles.yml'
+      );
     });
   });
 
@@ -117,7 +121,11 @@ name: my_project
 version: 1.0.0
 config_version: 2
 `;
-      await fs.writeFile(path.join(testProject.path, 'dbt_project.yml'), dbtProjectContent, 'utf-8');
+      await fs.writeFile(
+        path.join(testProject.path, 'dbt_project.yml'),
+        dbtProjectContent,
+        'utf-8'
+      );
 
       const profileName = await getDbtProfileName(testProject.path);
 
@@ -129,7 +137,11 @@ config_version: 2
 version: 1.0.0
 config_version: 2
 `;
-      await fs.writeFile(path.join(testProject.path, 'dbt_project.yml'), dbtProjectContent, 'utf-8');
+      await fs.writeFile(
+        path.join(testProject.path, 'dbt_project.yml'),
+        dbtProjectContent,
+        'utf-8'
+      );
 
       const profileName = await getDbtProfileName(testProject.path);
 
@@ -139,7 +151,9 @@ config_version: 2
     it('should throw error when dbt_project.yml does not exist', async () => {
       await fs.remove(path.join(testProject.path, 'dbt_project.yml'));
 
-      await expect(getDbtProfileName(testProject.path)).rejects.toThrow('dbt_project.yml not found');
+      await expect(getDbtProfileName(testProject.path)).rejects.toThrow(
+        'dbt_project.yml not found'
+      );
     });
 
     it('should throw error for invalid YAML', async () => {
@@ -309,9 +323,37 @@ other_profile:
       expect(connection.port).toBe(5439);
     });
 
-    it('should throw error for unsupported warehouse type', () => {
+    it('should convert Snowflake output', () => {
       const output: DbtOutput = {
         type: 'snowflake',
+        account: 'test-account',
+        user: 'test_user',
+        role: 'test_role',
+        warehouse: 'test_wh',
+        database: 'TEST_DB',
+        schema: 'TEST_SCHEMA',
+        private_key_path: '/path/to/key.p8',
+        private_key_passphrase: 'secret',
+        authenticator: 'snowflake',
+      };
+
+      const connection = dbtOutputToWarehouseConnection(output);
+
+      expect(connection.type).toBe('snowflake');
+      expect(connection.account).toBe('test-account');
+      expect(connection.user).toBe('test_user');
+      expect(connection.role).toBe('test_role');
+      expect(connection.warehouse).toBe('test_wh');
+      expect(connection.database).toBe('TEST_DB');
+      expect(connection.schema).toBe('TEST_SCHEMA');
+      expect(connection.privateKeyPath).toBe('/path/to/key.p8');
+      expect(connection.privateKeyPassphrase).toBe('secret');
+      expect(connection.authenticator).toBe('snowflake');
+    });
+
+    it('should throw error for unsupported warehouse type', () => {
+      const output: DbtOutput = {
+        type: 'mysql',
       };
 
       expect(() => dbtOutputToWarehouseConnection(output)).toThrow('Unsupported warehouse type');
@@ -369,7 +411,11 @@ test_project:
         'utf-8'
       );
 
-      const connection = await getWarehouseConnectionFromDbt(testProject.path, profilesPath, 'prod');
+      const connection = await getWarehouseConnectionFromDbt(
+        testProject.path,
+        profilesPath,
+        'prod'
+      );
 
       expect(connection.host).toBe('prod-host');
       expect(connection.database).toBe('prod_db');

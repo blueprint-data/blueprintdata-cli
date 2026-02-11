@@ -1,16 +1,13 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
-import { validateLLMApiKey } from '../../utils/env.js';
+import { getDbtProfile, validateLLMApiKey } from '../../utils/env.js';
 import { LLMProvider, CompanyContext } from '@blueprintdata/models';
-import {
-  getModelsForProvider,
-  getDefaultModel,
-  formatModelOption,
-} from '@blueprintdata/analytics';
+import { getModelsForProvider, getDefaultModel, formatModelOption } from '@blueprintdata/analytics';
 import { WebsiteScraper, DbtProjectScanner } from '@blueprintdata/analytics';
 import { ServiceFactory } from '../../factories/ServiceFactory.js';
 import { InitOptions } from '../../services/analytics/InitService.js';
 import { DEFAULT_CONFIG } from '@blueprintdata/config';
+import { validateDbtProject } from '../../utils/validation.js';
 
 export const initCommand = new Command('init')
   .description('Initialize analytics agent in a dbt project')
@@ -20,6 +17,17 @@ export const initCommand = new Command('init')
       p.intro('🚀 BlueprintData Analytics Agent');
 
       const projectPath = process.cwd();
+
+      p.log.step('Checking dbt_project.yml');
+      const dbtValidation = await validateDbtProject(projectPath);
+      if (!dbtValidation.valid) {
+        throw new Error(dbtValidation.error || 'Invalid dbt project');
+      }
+      p.log.success('dbt_project.yml ok');
+
+      p.log.step('Loading dbt profiles.yml');
+      await getDbtProfile(projectPath);
+      p.log.success('dbt profiles.yml ok');
 
       // Collect all inputs from user through prompts
       const inputs = await collectInputs();

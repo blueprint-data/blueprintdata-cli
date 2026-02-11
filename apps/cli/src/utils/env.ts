@@ -18,6 +18,15 @@ export interface DbtOutput {
   password?: string;
   dbname?: string;
   schema?: string;
+  // Snowflake
+  account?: string;
+  warehouse?: string;
+  role?: string;
+  database?: string;
+  authenticator?: string;
+  private_key_path?: string;
+  private_key_passphrase?: string;
+  private_key?: string;
   // BigQuery
   project?: string;
   dataset?: string;
@@ -43,16 +52,46 @@ export const getDefaultProfilesPath = (): string => {
 /**
  * Check if dbt profiles file exists
  */
-export const profilesExist = async (profilesPath?: string): Promise<boolean> => {
-  const profilePath = profilesPath || getDefaultProfilesPath();
+export const resolveProfilesPath = async (
+  projectPath: string = process.cwd(),
+  profilesPath?: string
+): Promise<string> => {
+  if (profilesPath) {
+    return profilesPath;
+  }
+
+  const envProfilesDir = process.env.DBT_PROFILES_DIR;
+  if (envProfilesDir && envProfilesDir.length > 0) {
+    const envProfilesPath = path.join(envProfilesDir, 'profiles.yml');
+    if (await fs.pathExists(envProfilesPath)) {
+      return envProfilesPath;
+    }
+  }
+
+  const localProfilesPath = path.join(projectPath, 'profiles.yml');
+  if (await fs.pathExists(localProfilesPath)) {
+    return localProfilesPath;
+  }
+
+  return getDefaultProfilesPath();
+};
+
+export const profilesExist = async (
+  projectPath: string = process.cwd(),
+  profilesPath?: string
+): Promise<boolean> => {
+  const profilePath = await resolveProfilesPath(projectPath, profilesPath);
   return await fs.pathExists(profilePath);
 };
 
 /**
  * Parse dbt profiles.yml file
  */
-export const parseProfiles = async (profilesPath?: string): Promise<DbtProfiles> => {
-  const profilePath = profilesPath || getDefaultProfilesPath();
+export const parseProfiles = async (
+  projectPath: string = process.cwd(),
+  profilesPath?: string
+): Promise<DbtProfiles> => {
+  const profilePath = await resolveProfilesPath(projectPath, profilesPath);
 
   if (!(await fs.pathExists(profilePath))) {
     throw new Error(`dbt profiles.yml not found at ${profilePath}`);
@@ -100,7 +139,7 @@ export const getDbtProfile = async (
   profilesPath?: string
 ): Promise<DbtProfile> => {
   const profileName = await getDbtProfileName(projectPath);
-  const profiles = await parseProfiles(profilesPath);
+  const profiles = await parseProfiles(projectPath, profilesPath);
 
   const profile = profiles[profileName];
   if (!profile) {
@@ -126,6 +165,21 @@ export const dbtOutputToWarehouseConnection = (output: DbtOutput): WarehouseConn
       // Pass the authentication method so BigQuery connector can handle it
       // oauth, oauth-secrets, service-account, service-account-json, application-default
       schema: output.method, // Reusing schema field to pass auth method
+    };
+  } else if (type === 'snowflake') {
+    return {
+      type: 'snowflake',
+      account: output.account,
+      warehouse: output.warehouse,
+      role: output.role,
+      database: output.database || 'default',
+      schema: output.schema,
+      user: output.user,
+      password: output.password,
+      authenticator: output.authenticator,
+      privateKey: output.private_key,
+      privateKeyPath: output.private_key_path,
+      privateKeyPassphrase: output.private_key_passphrase,
     };
   } else if (type === 'postgres' || type === 'redshift') {
     return {

@@ -1,6 +1,6 @@
 export type StackType = 'lite' | 'lite-bigquery' | 'lite-postgres' | 'aws';
 
-export type StorageType = 'postgres' | 'bigquery';
+export type StorageType = 'postgres' | 'bigquery' | 'snowflake';
 
 export interface ProjectConfig {
   stackType: StackType;
@@ -62,6 +62,14 @@ export interface WarehouseConnection {
   schema?: string;
   user?: string;
   password?: string;
+  // Snowflake specific
+  account?: string;
+  warehouse?: string;
+  role?: string;
+  authenticator?: string;
+  privateKey?: string;
+  privateKeyPath?: string;
+  privateKeyPassphrase?: string;
   // BigQuery specific
   projectId?: string;
   location?: string;

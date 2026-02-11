@@ -37,11 +37,23 @@ export const TEMPLATE_MAPPINGS: Record<StackType, TemplateConfig> = {
 export const STORAGE_DISPLAY_NAMES: Record<StorageType, string> = {
   postgres: 'PostgreSQL',
   bigquery: 'BigQuery',
+  snowflake: 'Snowflake',
 };
 
 export const STORAGE_ENV_VARS: Record<StorageType, string[]> = {
   postgres: ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'],
   bigquery: ['GOOGLE_CREDENTIALS_PATH', 'BIGQUERY_PROJECT_ID', 'BIGQUERY_DATASET_ID'],
+  snowflake: [
+    'SNOWFLAKE_ACCOUNT',
+    'SNOWFLAKE_USER',
+    'SNOWFLAKE_PASSWORD',
+    'SNOWFLAKE_WAREHOUSE',
+    'SNOWFLAKE_DATABASE',
+    'SNOWFLAKE_SCHEMA',
+    'SNOWFLAKE_ROLE',
+    'SNOWFLAKE_PRIVATE_KEY_PATH',
+    'SNOWFLAKE_PRIVATE_KEY_PASSPHRASE',
+  ],
 };
 
 export const PLACEHOLDERS = {

@@ -1,6 +1,11 @@
-import { AnalyticsConfig, LLMProvider, CompanyContext, WarehouseConnection } from '@blueprintdata/models';
+import {
+  AnalyticsConfig,
+  LLMProvider,
+  CompanyContext,
+  WarehouseConnection,
+} from '@blueprintdata/models';
 import { saveConfig } from '../../utils/config.js';
-import { getDefaultProfilesPath } from '../../utils/env.js';
+import { resolveProfilesPath } from '../../utils/env.js';
 
 export interface ConfigurationOptions {
   projectPath: string;
@@ -26,9 +31,10 @@ export class ConfigurationService {
    * Build and save analytics configuration
    */
   async buildAndSave(options: ConfigurationOptions): Promise<AnalyticsConfig> {
+    const dbtProfilesPath = await resolveProfilesPath(options.projectPath);
     const config: AnalyticsConfig = {
       projectPath: options.projectPath,
-      dbtProfilesPath: getDefaultProfilesPath(),
+      dbtProfilesPath,
       dbtTarget: options.dbtTarget || undefined,
       llmProvider: options.llmProvider,
       llmApiKey: options.llmApiKey,

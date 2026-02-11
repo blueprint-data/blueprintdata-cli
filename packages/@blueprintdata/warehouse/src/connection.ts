@@ -69,6 +69,8 @@ export abstract class BaseWarehouseConnector {
   getConnectionInfo(): string {
     if (this.connection.type === 'bigquery') {
       return `BigQuery: ${this.connection.projectId}`;
+    } else if (this.connection.type === 'snowflake') {
+      return `Snowflake: ${this.connection.account}/${this.connection.database}`;
     } else {
       return `Postgres: ${this.connection.host}:${this.connection.port}/${this.connection.database}`;
     }
