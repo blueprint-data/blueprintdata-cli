@@ -136,7 +136,113 @@ export class LLMClient {
       ...(temperature === 1 ? { temperature } : {}),
     });
 
-    const content = response.choices[0]?.message?.content || '';
+    const message = response.choices[0]?.message;
+    let content = '';
+
+    const extractText = (value: unknown): string => {
+      if (typeof value === 'string') {
+        return value;
+      }
+      if (value && typeof value === 'object') {
+        if ('text' in value) {
+          const textValue = (value as { text?: unknown }).text;
+          if (typeof textValue === 'string') {
+            return textValue;
+          }
+          if (textValue && typeof textValue === 'object' && 'value' in textValue) {
+            const textInner = (textValue as { value?: unknown }).value;
+            if (typeof textInner === 'string') {
+              return textInner;
+            }
+          }
+        }
+        if ('value' in value && typeof (value as { value?: unknown }).value === 'string') {
+          return (value as { value?: string }).value ?? '';
+        }
+        if ('content' in value) {
+          return extractText((value as { content?: unknown }).content);
+        }
+      }
+      return '';
+    };
+
+    if (typeof message?.content === 'string') {
+      content = message.content;
+    } else {
+      const contentParts = message?.content as unknown;
+      if (Array.isArray(contentParts)) {
+        content = contentParts.map((part) => extractText(part)).join('');
+      }
+    }
+
+    if (!content) {
+      if (process.env.BLUEPRINTDATA_VERBOSE === '1') {
+        const messageDebug = {
+          role: message?.role,
+          messageKeys: message ? Object.keys(message) : [],
+          contentType: Array.isArray(message?.content) ? 'array' : typeof message?.content,
+          contentLength:
+            typeof message?.content === 'string'
+              ? message.content.length
+              : Array.isArray(message?.content)
+                ? (message.content as unknown[]).length
+                : undefined,
+          contentPreview: Array.isArray(message?.content)
+            ? message?.content.map((part) =>
+                typeof part === 'string'
+                  ? part.slice(0, 80)
+                  : part && typeof part === 'object'
+                    ? Object.keys(part).slice(0, 6)
+                    : typeof part
+              )
+            : typeof message?.content === 'string'
+              ? message?.content.slice(0, 120)
+              : undefined,
+          refusal:
+            message && typeof (message as { refusal?: unknown }).refusal === 'string'
+              ? (message as { refusal?: string }).refusal
+              : undefined,
+        };
+        const responseDebug = {
+          id: response.id,
+          model: response.model,
+          usage: response.usage,
+          choices: response.choices.map((choice) => ({
+            index: choice.index,
+            finishReason: choice.finish_reason,
+            choiceKeys: Object.keys(choice),
+            message: {
+              role: choice.message?.role,
+              contentType: Array.isArray(choice.message?.content)
+                ? 'array'
+                : typeof choice.message?.content,
+              contentLength:
+                typeof choice.message?.content === 'string'
+                  ? choice.message.content.length
+                  : Array.isArray(choice.message?.content)
+                    ? (choice.message.content as unknown[]).length
+                    : undefined,
+              messageKeys: choice.message ? Object.keys(choice.message) : [],
+              refusal:
+                choice.message &&
+                typeof (choice.message as { refusal?: unknown }).refusal === 'string'
+                  ? (choice.message as { refusal?: string }).refusal
+                  : undefined,
+            },
+          })),
+        };
+        console.warn('OpenAI empty content debug:', messageDebug);
+        console.warn('OpenAI response debug:', responseDebug);
+      }
+      const refusal =
+        message && typeof (message as { refusal?: unknown }).refusal === 'string'
+          ? (message as { refusal?: string }).refusal
+          : undefined;
+      if (refusal) {
+        throw new Error(`OpenAI refusal: ${refusal}`);
+      }
+      throw new Error('OpenAI returned empty content');
+    }
     const usage = response.usage;
 
     return {
@@ -160,6 +266,13 @@ export class LLMClient {
    */
   getProvider(): LLMProvider {
     return this.provider;
+  }
+
+  /**
+   * Create a new client with a different model ID
+   */
+  withModel(modelId: string): LLMClient {
+    return new LLMClient(this.provider, this.apiKey, modelId);
   }
 }
 

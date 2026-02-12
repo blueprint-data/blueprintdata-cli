@@ -348,6 +348,7 @@ To work with this project:
       modelSelection: options?.modelSelection ?? config.modelSelection,
       schemaSelection: config.schemaSelection,
       dbtTarget: options?.dbtTarget ?? config.dbtTarget,
+      strictModelSelection: Boolean(options?.modelSelection),
     });
 
     // Initialize LLM client if configured (optional for Phase 2.2)
@@ -380,8 +381,9 @@ To work with this project:
     modelSelection?: string;
     schemaSelection?: string[];
     dbtTarget?: string;
+    strictModelSelection?: boolean;
   }): Promise<{ tables?: string[]; schemas?: string[] }> {
-    const { modelSelection, schemaSelection, dbtTarget } = options;
+    const { modelSelection, schemaSelection, dbtTarget, strictModelSelection } = options;
 
     if (!modelSelection) {
       return { schemas: schemaSelection };
@@ -394,6 +396,11 @@ To work with this project:
 
     const modelNames = await dbtIntegration.resolveModelSelection(modelSelection);
     if (modelNames.length === 0) {
+      if (strictModelSelection) {
+        throw new Error(
+          `No models matched selection "${modelSelection}". Check dbt selection syntax and case.`
+        );
+      }
       console.warn('  No models matched selection, profiling selected schemas or all tables');
       return { schemas: schemaSelection };
     }
@@ -411,6 +418,11 @@ To work with this project:
     }
 
     if (tables.length === 0) {
+      if (strictModelSelection) {
+        throw new Error(
+          `No warehouse tables resolved for selection "${modelSelection}". Check dbt selection syntax and case.`
+        );
+      }
       console.warn('  No valid models found, profiling selected schemas or all tables');
       return { schemas: schemaSelection };
     }

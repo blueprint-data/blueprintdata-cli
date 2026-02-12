@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import { loadConfig, isAnalyticsInitialized } from '../../utils/config.js';
 import { createWarehouseConnector } from '@blueprintdata/warehouse';
-import { ContextBuilder } from '@blueprintdata/analytics';
+import { ContextBuilder, DbtIntegration } from '@blueprintdata/analytics';
 
 export const syncCommand = new Command('sync')
   .description('Sync agent context with latest dbt models and warehouse schema')
@@ -10,6 +10,7 @@ export const syncCommand = new Command('sync')
   .option('--profiles-only', 'Only re-profile tables without updating summary/modelling')
   .option('--select <pattern>', 'Sync specific models (comma-separated names or dbt syntax)')
   .option('--target <environment>', 'dbt target environment (prod, dev, etc.)')
+  .option('--list-models', 'List available dbt model names and exit')
   .option('--exclude <pattern>', 'Exclude models (not yet implemented)')
   .option('--dry-run', 'Preview changes without updating (not yet implemented)')
   .action(
@@ -18,6 +19,7 @@ export const syncCommand = new Command('sync')
       profilesOnly?: boolean;
       select?: string;
       target?: string;
+      listModels?: boolean;
       exclude?: string;
       dryRun?: boolean;
     }) => {
@@ -36,6 +38,24 @@ export const syncCommand = new Command('sync')
         s1.start('Loading configuration');
         const config = await loadConfig(projectPath);
         s1.stop('✓ Configuration loaded');
+
+        if (options.listModels) {
+          const dbtTarget = options.target || config.dbtTarget;
+          const dbtIntegration = new DbtIntegration(projectPath, dbtTarget);
+          await dbtIntegration.ensureManifest();
+          const models = await dbtIntegration.listModels();
+
+          if (models.length === 0) {
+            p.log.warn('No dbt models found. Run `dbt parse` or check your project configuration.');
+          } else {
+            p.log.info(`Found ${models.length} dbt models:`);
+            for (const model of models.sort()) {
+              console.log(`- ${model}`);
+            }
+          }
+          p.outro('✅ Model listing complete');
+          return;
+        }
 
         // Connect to warehouse
         const s2 = p.spinner();

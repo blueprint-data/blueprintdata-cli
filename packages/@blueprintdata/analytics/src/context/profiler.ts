@@ -221,7 +221,11 @@ export class WarehouseProfiler {
         if (verbose) {
           console.log(`    [4/4] Generating markdown file...`);
         }
-        markdown = await enricher.getEnrichedContent(enhancedStats, dbtMetadata, companyContext);
+        if (result.content && result.content.trim().length > 0) {
+          markdown = result.content;
+        } else {
+          markdown = generateFallbackProfile(enhancedStats, dbtMetadata);
+        }
 
         // Save to file
         const filename = `${schemaName}_${tableName}.md`;
@@ -242,6 +246,11 @@ export class WarehouseProfiler {
         // LLM failed - use fallback
         if (verbose) {
           console.log(`    ⚠ LLM failed, using fallback template`);
+        }
+        if (result.error) {
+          console.warn(
+            `    LLM error (${result.error.errorType}): ${result.error.error || 'Unknown error'}`
+          );
         }
         markdown = generateFallbackProfile(enhancedStats, dbtMetadata);
 

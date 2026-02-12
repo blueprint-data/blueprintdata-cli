@@ -77,9 +77,22 @@ export class LLMEnricher {
 
       // Call LLM
       const systemPrompt = getProfilerSystemPrompt();
-      const result = await this.client.generate(input, {
+      const provider = this.client.getProvider();
+      const modelId = this.client.getModelId();
+      const shouldFallbackModel = provider === 'openai' && modelId.startsWith('gpt-5');
+      const effectiveClient = shouldFallbackModel ? this.client.withModel('gpt-4.1') : this.client;
+      const effectiveModelId = effectiveClient.getModelId();
+
+      if (shouldFallbackModel) {
+        console.warn(
+          'OpenAI GPT-5 chat completions returned empty content; using gpt-4.1 for profiling'
+        );
+      }
+
+      const maxTokens = provider === 'openai' && effectiveModelId.startsWith('gpt-5') ? 8192 : 4096;
+      const result = await effectiveClient.generate(input, {
         systemPrompt,
-        maxTokens: 4096,
+        maxTokens,
         temperature: 0.7,
       });
 
@@ -151,7 +164,18 @@ dbt Project Metadata:
       `;
 
       const systemPrompt = getProjectSummarySystemPrompt();
-      const result = await this.client.generate(input, {
+      const provider = this.client.getProvider();
+      const modelId = this.client.getModelId();
+      const shouldFallbackModel = provider === 'openai' && modelId.startsWith('gpt-5');
+      const effectiveClient = shouldFallbackModel ? this.client.withModel('gpt-4.1') : this.client;
+
+      if (shouldFallbackModel) {
+        console.warn(
+          'OpenAI GPT-5 chat completions returned empty content; using gpt-4.1 for project summary'
+        );
+      }
+
+      const result = await effectiveClient.generate(input, {
         systemPrompt,
         maxTokens: 2048,
         temperature: 0.7,
@@ -203,7 +227,18 @@ ${scanResult.models.length > 50 ? `... and ${scanResult.models.length - 50} more
       `;
 
       const systemPrompt = getModelingAnalysisSystemPrompt();
-      const result = await this.client.generate(input, {
+      const provider = this.client.getProvider();
+      const modelId = this.client.getModelId();
+      const shouldFallbackModel = provider === 'openai' && modelId.startsWith('gpt-5');
+      const effectiveClient = shouldFallbackModel ? this.client.withModel('gpt-4.1') : this.client;
+
+      if (shouldFallbackModel) {
+        console.warn(
+          'OpenAI GPT-5 chat completions returned empty content; using gpt-4.1 for modeling analysis'
+        );
+      }
+
+      const result = await effectiveClient.generate(input, {
         systemPrompt,
         maxTokens: 3072,
         temperature: 0.7,

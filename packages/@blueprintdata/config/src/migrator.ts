@@ -48,10 +48,11 @@ export function migrateV1ToV2(v1: AnalyticsConfigV1): AnalyticsConfigV2 {
   };
 
   const company: CompanyConfig | undefined =
-    v1.companyContext || v1.modelSelection
+    v1.companyContext || v1.modelSelection || v1.schemaSelection
       ? {
           context: v1.companyContext || {},
           modelSelection: v1.modelSelection,
+          schemaSelection: v1.schemaSelection,
         }
       : undefined;
 
@@ -95,6 +96,7 @@ export function migrateV2ToV1(v2: AnalyticsConfigV2): AnalyticsConfigV1 {
     warehouseConnection: v2.warehouse.connection,
     companyContext: v2.company?.context,
     modelSelection: v2.company?.modelSelection,
+    schemaSelection: v2.company?.schemaSelection,
     slackBotToken: v2.slack?.botToken,
     slackSigningSecret: v2.slack?.signingSecret,
     uiPort: v2.interface.uiPort,

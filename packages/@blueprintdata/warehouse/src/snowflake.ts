@@ -82,6 +82,8 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
 
   async getTableSchema(schemaName: string, tableName: string): Promise<TableSchema> {
     try {
+      const normalizedSchemaName = schemaName.toUpperCase();
+      const normalizedTableName = tableName.toUpperCase();
       const database = this.quoteIdentifier(this.connection.database);
       const columnQuery = `
         SELECT
@@ -93,7 +95,10 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
         ORDER BY ordinal_position
       `;
 
-      const columnResult = await this.query(columnQuery, [schemaName, tableName]);
+      const columnResult = await this.query(columnQuery, [
+        normalizedSchemaName,
+        normalizedTableName,
+      ]);
 
       const columns: ColumnInfo[] = columnResult.rows.map((row) => ({
         name: String(this.getRowValue(row, 'column_name', 'COLUMN_NAME') ?? ''),
@@ -105,8 +110,8 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
       let rowCount: number | undefined;
       try {
         const countQuery = `SELECT COUNT(*) as count FROM ${database}.${this.quoteIdentifier(
-          schemaName
-        )}.${this.quoteIdentifier(tableName)}`;
+          normalizedSchemaName
+        )}.${this.quoteIdentifier(normalizedTableName)}`;
         const result = await this.query(countQuery);
         const countValue = this.getRowValue(result.rows[0] ?? {}, 'count', 'COUNT');
         if (countValue !== undefined) {
@@ -123,7 +128,7 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
           FROM ${database}.INFORMATION_SCHEMA.TABLES
           WHERE table_schema = ? AND table_name = ?
         `;
-        const result = await this.query(sizeQuery, [schemaName, tableName]);
+        const result = await this.query(sizeQuery, [normalizedSchemaName, normalizedTableName]);
         const sizeValue = this.getRowValue(result.rows[0] ?? {}, 'bytes', 'BYTES');
         if (sizeValue !== undefined) {
           sizeInBytes = Number(sizeValue);
@@ -154,7 +159,7 @@ export class SnowflakeConnector extends BaseWarehouseConnector {
       const query = `
         SELECT table_schema, table_name
         FROM ${database}.INFORMATION_SCHEMA.TABLES
-        WHERE table_type = 'BASE TABLE'
+        WHERE table_type IN ('BASE TABLE', 'VIEW', 'MATERIALIZED VIEW')
           AND table_schema != 'INFORMATION_SCHEMA'
           ${schemaName ? 'AND table_schema = ?' : ''}
         ORDER BY table_schema, table_name

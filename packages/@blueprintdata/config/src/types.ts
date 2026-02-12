@@ -38,6 +38,7 @@ export interface WarehouseConfig {
 export interface CompanyConfig {
   context: CompanyContext;
   modelSelection?: string;
+  schemaSelection?: string[];
 }
 
 /**
@@ -84,6 +85,7 @@ export interface AnalyticsConfigV1 {
   warehouseConnection: WarehouseConnection;
   companyContext?: CompanyContext;
   modelSelection?: string;
+  schemaSelection?: string[];
   slackBotToken?: string;
   slackSigningSecret?: string;
   uiPort?: number;

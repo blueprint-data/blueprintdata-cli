@@ -18,8 +18,6 @@ export class StatisticsGatherer {
     // Get basic schema
     const tableSchema = await this.connector.getTableSchema(schemaName, tableName);
 
-    console.log(`      Analyzing ${tableSchema.columns.length} columns...`);
-
     // Enhance each column with additional statistics
     const enhancedColumns: EnhancedColumnStats[] = [];
 
@@ -34,15 +32,9 @@ export class StatisticsGatherer {
       }
 
       enhancedColumns.push(enhanced);
-
-      // Progress indicator every 5 columns
-      if ((i + 1) % 5 === 0) {
-        console.log(`      Progress: ${i + 1}/${tableSchema.columns.length} columns`);
-      }
     }
 
     // Detect time range if there's a date/timestamp column
-    console.log(`      Detecting time range...`);
     const timeRange = await this.detectTimeRange(schemaName, tableName, tableSchema.columns);
 
     return {
