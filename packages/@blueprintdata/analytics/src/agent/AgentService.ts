@@ -367,6 +367,8 @@ When users ask questions about data:
 2. Use the query_warehouse tool to execute SQL queries and retrieve data
 3. Use the generate_chart tool to create visualizations when appropriate
 
+Important: Context doc paths are case-sensitive. Always use the exact file paths returned by list_context_docs.
+
 Use tool calls when needed, then answer normally after receiving tool results.`;
   }
 
