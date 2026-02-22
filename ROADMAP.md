@@ -32,6 +32,7 @@ Complete the `analytics chat` command to tie together all components:
 **Why**: This phase completes the MVP by connecting the web UI, gateway, agent, and database into a cohesive user experience.
 
 **Success Criteria**:
+
 - ✅ Users can run `blueprintdata analytics chat` successfully
 - ✅ Authentication flow works end-to-end
 - ✅ Chat interface connects to gateway
@@ -49,12 +50,14 @@ Complete the `analytics chat` command to tie together all components:
 Comprehensive testing, documentation, and quality improvements:
 
 **Testing**:
+
 - Unit tests for auth, agent, and tools
 - Integration tests for WebSocket communication
 - End-to-end testing of chat flow
 - Target: 70%+ code coverage
 
 **Polish**:
+
 - Error handling improvements
 - Performance optimization
 - User experience refinements
@@ -63,6 +66,7 @@ Comprehensive testing, documentation, and quality improvements:
 **Why**: Ensures the MVP is production-ready, reliable, and maintainable.
 
 **Success Criteria**:
+
 - ✅ 70%+ test coverage
 - ✅ All critical paths have integration tests
 - ✅ End-to-end tests pass consistently
@@ -304,7 +308,7 @@ Comprehensive testing, documentation, and quality improvements:
 
 ### External Dependencies
 
-- **LLM APIs**: Anthropic Claude, OpenAI GPT availability
+- **LLM APIs**: OpenRouter availability
 - **dbt**: Compatibility with dbt Core versions
 - **Warehouse Connectors**: BigQuery, Postgres, etc. API stability
 

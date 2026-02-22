@@ -1,15 +1,11 @@
-
 import { RootRoute, Outlet } from '@tanstack/react-router';
-import { AuthProvider } from '../../features/auth/context/AuthContext';
 
 export const Route = new RootRoute({
   component: () => {
     return (
-      <AuthProvider>
-        <div className="min-h-screen bg-background">
-          <Outlet />
-        </div>
-      </AuthProvider>
+      <div className="app-shell min-h-screen bg-background text-foreground">
+        <Outlet />
+      </div>
     );
   },
 });

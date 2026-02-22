@@ -6,12 +6,7 @@ import {
   validateLLMApiKey,
 } from '../../utils/env.js';
 import { LLMProvider, CompanyContext } from '@blueprintdata/models';
-import {
-  getModelsForProvider,
-  getDefaultModel,
-  formatModelOption,
-  ContextBuilder,
-} from '@blueprintdata/analytics';
+import { getDefaultModel, ContextBuilder, OPENROUTER_MODELS } from '@blueprintdata/analytics';
 import { WebsiteScraper, DbtProjectScanner } from '@blueprintdata/analytics';
 import { ServiceFactory } from '../../factories/ServiceFactory.js';
 import { InitOptions } from '../../services/analytics/InitService.js';
@@ -19,6 +14,7 @@ import { DEFAULT_CONFIG } from '@blueprintdata/config';
 import { validateDbtProject } from '../../utils/validation.js';
 import { isAnalyticsInitialized, loadConfig } from '../../utils/config.js';
 import { createWarehouseConnector } from '@blueprintdata/warehouse';
+import { OpenRouter } from '@openrouter/sdk';
 
 export const initCommand = new Command('init')
   .description('Initialize analytics agent in a dbt project')
@@ -165,7 +161,7 @@ async function collectInputs(
   const { llmProvider, llmApiKey } = await selectLLMProvider();
 
   // LLM models
-  const { llmModel, llmProfilingModel } = await selectLLMModels(llmProvider);
+  const { llmModel, llmProfilingModel } = await selectLLMModels(llmProvider, llmApiKey);
 
   // Company context
   const companyContext = await collectCompanyContext(projectPath);
@@ -199,59 +195,17 @@ async function collectInputs(
  * Select LLM provider and get API key
  */
 async function selectLLMProvider(): Promise<{ llmProvider: LLMProvider; llmApiKey: string }> {
-  const anthropicKey = validateLLMApiKey('anthropic');
-  const openaiKey = validateLLMApiKey('openai');
+  const openRouterKey = validateLLMApiKey('openrouter');
 
-  let llmProvider: LLMProvider;
+  const llmProvider: LLMProvider = 'openrouter';
   let llmApiKey: string;
 
-  if (anthropicKey && openaiKey) {
-    // Both available, let user choose
-    const provider = await p.select({
-      message: 'Select LLM provider:',
-      options: [
-        {
-          value: 'anthropic' as LLMProvider,
-          label: 'Anthropic Claude (detected in environment)',
-        },
-        { value: 'openai' as LLMProvider, label: 'OpenAI GPT (detected in environment)' },
-      ],
-    });
-
-    if (p.isCancel(provider)) {
-      p.cancel('Operation cancelled');
-      process.exit(0);
-    }
-
-    llmProvider = provider as LLMProvider;
-    llmApiKey = provider === 'anthropic' ? anthropicKey : openaiKey;
-  } else if (anthropicKey) {
-    llmProvider = 'anthropic';
-    llmApiKey = anthropicKey;
-    p.log.success('Using Anthropic Claude (detected in environment)');
-  } else if (openaiKey) {
-    llmProvider = 'openai';
-    llmApiKey = openaiKey;
-    p.log.success('Using OpenAI GPT (detected in environment)');
+  if (openRouterKey) {
+    llmApiKey = openRouterKey;
+    p.log.success('Using OpenRouter (detected in environment)');
   } else {
-    // None available, prompt user
-    const provider = await p.select({
-      message: 'Select LLM provider:',
-      options: [
-        { value: 'anthropic' as LLMProvider, label: 'Anthropic Claude' },
-        { value: 'openai' as LLMProvider, label: 'OpenAI GPT' },
-      ],
-    });
-
-    if (p.isCancel(provider)) {
-      p.cancel('Operation cancelled');
-      process.exit(0);
-    }
-
-    llmProvider = provider as LLMProvider;
-
     const apiKey = await p.password({
-      message: 'Enter API key:',
+      message: 'Enter OpenRouter API key:',
       validate: (value) => {
         if (!value || value.length === 0) return 'API key is required';
         return undefined;
@@ -273,39 +227,292 @@ async function selectLLMProvider(): Promise<{ llmProvider: LLMProvider; llmApiKe
  * Select LLM models for chat and profiling
  */
 async function selectLLMModels(
-  llmProvider: LLMProvider
+  llmProvider: LLMProvider,
+  llmApiKey: string
 ): Promise<{ llmModel: string; llmProfilingModel: string }> {
-  const availableModels = getModelsForProvider(llmProvider);
-  const modelOptions = availableModels.map((model) => formatModelOption(model));
+  if (llmProvider !== 'openrouter') {
+    throw new Error('Unsupported LLM provider');
+  }
 
-  // Select chat model
-  const chatModel = await p.select({
+  const spinner = p.spinner();
+  spinner.start('Loading OpenRouter models');
+  let models: OpenRouterModel[] = [];
+
+  try {
+    models = await fetchOpenRouterModels(llmApiKey);
+    spinner.stop(`✓ Loaded ${models.length} OpenRouter models`);
+  } catch (error) {
+    spinner.stop('⚠ Failed to load OpenRouter models, using curated list');
+    models = [];
+  }
+
+  const fallbackModels: OpenRouterModel[] = OPENROUTER_MODELS.map((model) => ({
+    id: model.id,
+    name: model.name,
+    contextLength: model.contextWindow || undefined,
+    pricing: undefined,
+  }));
+
+  const catalog = models.length > 0 ? models : fallbackModels;
+
+  const defaultChat = getDefaultModel(llmProvider, 'chat').id;
+  const defaultProfiling = getDefaultModel(llmProvider, 'profiling').id;
+
+  const llmModel = await selectOpenRouterModel({
+    models: catalog,
     message: 'Select model for chat interactions:',
-    options: modelOptions,
-    initialValue: getDefaultModel(llmProvider, 'chat').id,
+    recommendedIds: getRecommendedModelIds('chat'),
+    defaultId: defaultChat,
   });
 
-  if (p.isCancel(chatModel)) {
-    p.cancel('Operation cancelled');
-    process.exit(0);
-  }
-
-  // Select profiling model
-  const profilingModel = await p.select({
-    message: 'Select model for context profiling (recommend cost-effective):',
-    options: modelOptions,
-    initialValue: getDefaultModel(llmProvider, 'profiling').id,
+  const llmProfilingModel = await selectOpenRouterModel({
+    models: catalog,
+    message: 'Select model for context profiling (recommend fast/cost-effective):',
+    recommendedIds: getRecommendedModelIds('profiling'),
+    defaultId: defaultProfiling,
   });
-
-  if (p.isCancel(profilingModel)) {
-    p.cancel('Operation cancelled');
-    process.exit(0);
-  }
 
   return {
-    llmModel: chatModel as string,
-    llmProfilingModel: profilingModel as string,
+    llmModel,
+    llmProfilingModel,
   };
+}
+
+type OpenRouterModel = {
+  id: string;
+  name?: string;
+  contextLength?: number;
+  pricing?: { prompt?: string; completion?: string };
+};
+
+async function fetchOpenRouterModels(apiKey: string): Promise<OpenRouterModel[]> {
+  const client = new OpenRouter({ apiKey });
+  const response = await client.models.list();
+
+  const data = (response as { data?: unknown }).data;
+  const modelsArray = Array.isArray(data) ? data : [];
+
+  const results: OpenRouterModel[] = [];
+
+  for (const model of modelsArray) {
+    const raw = model as {
+      id?: unknown;
+      name?: unknown;
+      context_length?: unknown;
+      pricing?: { prompt?: unknown; completion?: unknown };
+    };
+
+    const id = typeof raw.id === 'string' ? raw.id : '';
+    if (!id) continue;
+
+    results.push({
+      id,
+      name: typeof raw.name === 'string' ? raw.name : undefined,
+      contextLength:
+        typeof raw.context_length === 'number'
+          ? raw.context_length
+          : typeof raw.context_length === 'string'
+            ? Number(raw.context_length)
+            : undefined,
+      pricing:
+        raw.pricing && typeof raw.pricing === 'object'
+          ? {
+              prompt: typeof raw.pricing.prompt === 'string' ? raw.pricing.prompt : undefined,
+              completion:
+                typeof raw.pricing.completion === 'string' ? raw.pricing.completion : undefined,
+            }
+          : undefined,
+    });
+  }
+
+  return results.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function getRecommendedModelIds(type: 'chat' | 'profiling'): string[] {
+  if (type === 'profiling') {
+    return [
+      'google/gemini-2.5-flash',
+      'x-ai/grok-4.1-fast',
+      'arcee-ai/trinity-large-preview:free',
+      'google/gemini-3-flash-preview-20251217',
+    ];
+  }
+
+  return [
+    'openrouter/auto',
+    'minimax/minimax-m2.5-20260211',
+    'moonshotai/kimi-k2.5-0127',
+    'z-ai/glm-5-20260211',
+    'deepseek/deepseek-v3.2-20251201',
+    'anthropic/claude-4.5-sonnet-20250929',
+    'anthropic/claude-4.6-opus-20260205',
+  ];
+}
+
+async function selectOpenRouterModel(options: {
+  models: OpenRouterModel[];
+  message: string;
+  recommendedIds: string[];
+  defaultId: string;
+}): Promise<string> {
+  const { models, message, recommendedIds, defaultId } = options;
+  const recommendedModels = models.filter((model) => recommendedIds.includes(model.id));
+  const baseModels = recommendedModels.length > 0 ? recommendedModels : models.slice(0, 12);
+  const optionsList = buildOpenRouterOptions(
+    baseModels,
+    recommendedModels.length > 0 ? recommendedIds : []
+  );
+
+  const selection = await p.select({
+    message,
+    options: [
+      ...optionsList,
+      { value: '__search__', label: 'Search all models' },
+      { value: '__manual__', label: 'Enter model ID manually' },
+    ],
+    initialValue: defaultId,
+  });
+
+  if (p.isCancel(selection)) {
+    p.cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  if (selection === '__search__') {
+    return await selectModelBySearch(models, message, defaultId);
+  }
+
+  if (selection === '__manual__') {
+    return await promptManualModelId();
+  }
+
+  return selection as string;
+}
+
+async function selectModelBySearch(
+  models: OpenRouterModel[],
+  message: string,
+  defaultId: string
+): Promise<string> {
+  while (true) {
+    const query = await p.text({
+      message: 'Search models by name or ID:',
+      placeholder: 'e.g., gemini, claude, openrouter/auto',
+    });
+
+    if (p.isCancel(query)) {
+      p.cancel('Operation cancelled');
+      process.exit(0);
+    }
+
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) {
+      return defaultId;
+    }
+
+    const filtered = models.filter((model) => {
+      return (
+        model.id.toLowerCase().includes(normalized) ||
+        (model.name && model.name.toLowerCase().includes(normalized))
+      );
+    });
+
+    if (filtered.length === 0) {
+      p.log.warn('No models matched. Try another search term.');
+      continue;
+    }
+
+    const limited = filtered.slice(0, 20);
+    const selected = await p.select({
+      message,
+      options: [
+        ...buildOpenRouterOptions(limited, []),
+        { value: '__search__', label: 'Search again' },
+        { value: '__manual__', label: 'Enter model ID manually' },
+      ],
+      initialValue: defaultId,
+    });
+
+    if (p.isCancel(selected)) {
+      p.cancel('Operation cancelled');
+      process.exit(0);
+    }
+
+    if (selected === '__search__') {
+      continue;
+    }
+
+    if (selected === '__manual__') {
+      return await promptManualModelId();
+    }
+
+    return selected as string;
+  }
+}
+
+async function promptManualModelId(): Promise<string> {
+  const manual = await p.text({
+    message: 'Enter OpenRouter model ID:',
+    placeholder: 'e.g., openrouter/auto',
+    validate: (value) => {
+      if (!value || value.trim().length === 0) {
+        return 'Model ID is required';
+      }
+      return undefined;
+    },
+  });
+
+  if (p.isCancel(manual)) {
+    p.cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  return manual.trim();
+}
+
+function buildOpenRouterOptions(
+  models: OpenRouterModel[],
+  recommendedIds: string[]
+): Array<{ value: string; label: string; hint?: string }> {
+  const recommendedSet = new Set(recommendedIds);
+  const modelMap = new Map(models.map((model) => [model.id, model]));
+  const ordered = [
+    ...recommendedIds.filter((id) => modelMap.has(id)).map((id) => modelMap.get(id)!),
+    ...models.filter((model) => !recommendedSet.has(model.id)),
+  ];
+
+  return ordered.map((model) => {
+    const name = model.name || model.id;
+    const label = recommendedSet.has(model.id) ? `${name} (Recommended)` : name;
+    const hintParts = [] as string[];
+
+    if (model.contextLength && model.contextLength > 0) {
+      hintParts.push(`${(model.contextLength / 1000).toFixed(0)}K context`);
+    }
+
+    if (model.pricing?.prompt || model.pricing?.completion) {
+      const promptValue = model.pricing.prompt ? Number(model.pricing.prompt) : undefined;
+      const completionValue = model.pricing.completion
+        ? Number(model.pricing.completion)
+        : undefined;
+      const promptCost = Number.isFinite(promptValue)
+        ? (promptValue as number) * 1_000_000
+        : undefined;
+      const completionCost = Number.isFinite(completionValue)
+        ? (completionValue as number) * 1_000_000
+        : undefined;
+
+      if (promptCost !== undefined && completionCost !== undefined) {
+        hintParts.push(`$${promptCost.toFixed(2)}/$${completionCost.toFixed(2)} per 1M tokens`);
+      }
+    }
+
+    return {
+      value: model.id,
+      label,
+      hint: hintParts.length > 0 ? hintParts.join(' • ') : undefined,
+    };
+  });
 }
 
 /**

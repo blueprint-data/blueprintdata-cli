@@ -218,9 +218,11 @@ export const getWarehouseConnectionFromDbt = async (
 /**
  * Validate environment variables for LLM providers
  */
-export const validateLLMApiKey = (provider: 'anthropic' | 'openai'): string | undefined => {
-  const envVarName = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
-  return process.env[envVarName];
+export const validateLLMApiKey = (provider: 'openrouter'): string | undefined => {
+  if (provider !== 'openrouter') {
+    return undefined;
+  }
+  return process.env.OPENROUTER_API_KEY;
 };
 
 /**

@@ -1,33 +1,16 @@
 import { describe, it, expect, beforeEach, mock } from 'bun:test';
 import { LLMClient, createLLMClient } from '../client.js';
-import type { GenerateOptions } from '../client.js';
+import type { LLMProvider } from '@blueprintdata/models';
 
-// Mock the Anthropic SDK
-const mockAnthropicCreate = mock(async () => ({
-  id: 'msg_test',
-  type: 'message',
-  role: 'assistant',
-  content: [{ type: 'text' as const, text: 'Mocked Anthropic response' }],
-  model: 'claude-sonnet-4-5',
-  stop_reason: 'end_turn',
-  stop_sequence: null,
-  usage: {
-    input_tokens: 100,
-    output_tokens: 50,
-  },
-}));
-
-const mockOpenAICreate = mock(async () => ({
+const mockOpenRouterSend = mock(async () => ({
   id: 'chatcmpl-test',
-  object: 'chat.completion',
-  created: Date.now(),
-  model: 'gpt-5.2',
+  model: 'openrouter/auto',
   choices: [
     {
       index: 0,
       message: {
         role: 'assistant',
-        content: 'Mocked OpenAI response',
+        content: 'Mocked OpenRouter response',
       },
       finish_reason: 'stop',
     },
@@ -39,24 +22,14 @@ const mockOpenAICreate = mock(async () => ({
   },
 }));
 
-// Mock modules
-mock.module('@anthropic-ai/sdk', () => {
+mock.module('@openrouter/sdk', () => {
   return {
-    default: class MockAnthropic {
-      messages = {
-        create: mockAnthropicCreate,
-      };
-    },
-  };
-});
-
-mock.module('openai', () => {
-  return {
-    default: class MockOpenAI {
+    OpenRouter: class MockOpenRouter {
       chat = {
-        completions: {
-          create: mockOpenAICreate,
-        },
+        send: mockOpenRouterSend,
+      };
+      models = {
+        list: mock(async () => ({ data: [] })),
       };
     },
   };
@@ -64,44 +37,36 @@ mock.module('openai', () => {
 
 describe('LLMClient', () => {
   beforeEach(() => {
-    mockAnthropicCreate.mockClear();
-    mockOpenAICreate.mockClear();
+    mockOpenRouterSend.mockClear();
   });
 
   describe('constructor', () => {
-    it('should create Anthropic client', () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
+    it('should create OpenRouter client', () => {
+      const client = new LLMClient('openrouter' as LLMProvider, 'or-test-key', 'openrouter/auto');
 
-      expect(client.getProvider()).toBe('anthropic');
-      expect(client.getModelId()).toBe('claude-sonnet-4-5');
-    });
-
-    it('should create OpenAI client', () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
-
-      expect(client.getProvider()).toBe('openai');
-      expect(client.getModelId()).toBe('gpt-5.2');
+      expect(client.getProvider()).toBe('openrouter' as LLMProvider);
+      expect(client.getModelId()).toBe('openrouter/auto');
     });
   });
 
-  describe('generate - Anthropic', () => {
-    it('should generate completion with Anthropic', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
+  describe('generate - OpenRouter', () => {
+    it('should generate completion with OpenRouter', async () => {
+      const client = new LLMClient('openrouter' as LLMProvider, 'or-test-key', 'openrouter/auto');
 
       const result = await client.generate('Test prompt');
 
-      expect(result.content).toBe('Mocked Anthropic response');
-      expect(result.tokensUsed.input).toBe(100);
-      expect(result.tokensUsed.output).toBe(50);
-      expect(mockAnthropicCreate).toHaveBeenCalledTimes(1);
+      expect(result.content).toBe('Mocked OpenRouter response');
+      expect(result.tokensUsed.input).toBe(120);
+      expect(result.tokensUsed.output).toBe(60);
+      expect(mockOpenRouterSend).toHaveBeenCalledTimes(1);
     });
 
-    it('should pass temperature and maxTokens to Anthropic', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
+    it('should pass temperature and maxTokens to OpenRouter', async () => {
+      const client = new LLMClient('openrouter' as LLMProvider, 'or-test-key', 'openrouter/auto');
 
       await client.generate('Test prompt', { temperature: 0.5, maxTokens: 2000 });
 
-      expect(mockAnthropicCreate).toHaveBeenCalledWith(
+      expect(mockOpenRouterSend).toHaveBeenCalledWith(
         expect.objectContaining({
           temperature: 0.5,
           max_tokens: 2000,
@@ -109,87 +74,12 @@ describe('LLMClient', () => {
       );
     });
 
-    it('should pass system prompt to Anthropic', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
+    it('should pass system prompt to OpenRouter', async () => {
+      const client = new LLMClient('openrouter' as LLMProvider, 'or-test-key', 'openrouter/auto');
 
       await client.generate('Test prompt', { systemPrompt: 'You are a helpful assistant' });
 
-      expect(mockAnthropicCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          system: 'You are a helpful assistant',
-        })
-      );
-    });
-
-    it('should use default temperature and maxTokens', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
-
-      await client.generate('Test prompt');
-
-      expect(mockAnthropicCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          temperature: 0.7,
-          max_tokens: 4096,
-        })
-      );
-    });
-
-    it('should format messages correctly for Anthropic', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
-
-      await client.generate('Test prompt');
-
-      expect(mockAnthropicCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          messages: [
-            {
-              role: 'user',
-              content: 'Test prompt',
-            },
-          ],
-        })
-      );
-    });
-
-    it('should handle Anthropic error', async () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
-
-      mockAnthropicCreate.mockRejectedValueOnce(new Error('API error'));
-
-      await expect(client.generate('Test prompt')).rejects.toThrow('API error');
-    });
-  });
-
-  describe('generate - OpenAI', () => {
-    it('should generate completion with OpenAI', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
-
-      const result = await client.generate('Test prompt');
-
-      expect(result.content).toBe('Mocked OpenAI response');
-      expect(result.tokensUsed.input).toBe(120);
-      expect(result.tokensUsed.output).toBe(60);
-      expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
-    });
-
-    it('should pass maxTokens to OpenAI', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
-
-      await client.generate('Test prompt', { temperature: 0.8, maxTokens: 1000 });
-
-      expect(mockOpenAICreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          max_completion_tokens: 1000,
-        })
-      );
-    });
-
-    it('should pass system prompt to OpenAI', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
-
-      await client.generate('Test prompt', { systemPrompt: 'You are a helpful assistant' });
-
-      expect(mockOpenAICreate).toHaveBeenCalledWith(
+      expect(mockOpenRouterSend).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: [
             { role: 'system', content: 'You are a helpful assistant' },
@@ -200,65 +90,31 @@ describe('LLMClient', () => {
     });
 
     it('should not include system message when not provided', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
+      const client = new LLMClient('openrouter' as LLMProvider, 'or-test-key', 'openrouter/auto');
 
       await client.generate('Test prompt');
 
-      expect(mockOpenAICreate).toHaveBeenCalledWith(
+      expect(mockOpenRouterSend).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: [{ role: 'user', content: 'Test prompt' }],
         })
       );
     });
 
-    it('should handle OpenAI error', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
+    it('should handle OpenRouter error', async () => {
+      const client = new LLMClient('openrouter' as LLMProvider, 'or-test-key', 'openrouter/auto');
 
-      mockOpenAICreate.mockRejectedValueOnce(new Error('API rate limit'));
+      mockOpenRouterSend.mockRejectedValueOnce(new Error('API rate limit'));
 
       await expect(client.generate('Test prompt')).rejects.toThrow('API rate limit');
     });
 
-    it('should handle empty response content', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
-
-      mockOpenAICreate.mockResolvedValueOnce({
-        id: 'chatcmpl-test',
-        object: 'chat.completion',
-        created: Date.now(),
-        model: 'gpt-5.2',
-        choices: [
-          {
-            index: 0,
-            message: {
-              role: 'assistant',
-              content: null,
-            },
-            finish_reason: 'stop',
-          },
-        ],
-        usage: {
-          prompt_tokens: 10,
-          completion_tokens: 0,
-          total_tokens: 10,
-        },
-      } as any);
-
-      const result = await client.generate('Test prompt');
-
-      expect(result.content).toBe('');
-      expect(result.tokensUsed.input).toBe(10);
-      expect(result.tokensUsed.output).toBe(0);
-    });
-
     it('should handle missing usage data', async () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
+      const client = new LLMClient('openrouter' as LLMProvider, 'or-test-key', 'openrouter/auto');
 
-      mockOpenAICreate.mockResolvedValueOnce({
+      mockOpenRouterSend.mockResolvedValueOnce({
         id: 'chatcmpl-test',
-        object: 'chat.completion',
-        created: Date.now(),
-        model: 'gpt-5.2',
+        model: 'openrouter/auto',
         choices: [
           {
             index: 0,
@@ -280,18 +136,11 @@ describe('LLMClient', () => {
   });
 
   describe('createLLMClient factory', () => {
-    it('should create Anthropic client', () => {
-      const client = createLLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
+    it('should create OpenRouter client', () => {
+      const client = createLLMClient('openrouter' as LLMProvider, 'or-test-key', 'openrouter/auto');
 
-      expect(client.getProvider()).toBe('anthropic');
-      expect(client.getModelId()).toBe('claude-sonnet-4-5');
-    });
-
-    it('should create OpenAI client', () => {
-      const client = createLLMClient('openai', 'sk-test-key', 'gpt-5.2');
-
-      expect(client.getProvider()).toBe('openai');
-      expect(client.getModelId()).toBe('gpt-5.2');
+      expect(client.getProvider()).toBe('openrouter' as LLMProvider);
+      expect(client.getModelId()).toBe('openrouter/auto');
     });
   });
 
@@ -305,15 +154,15 @@ describe('LLMClient', () => {
 
   describe('getters', () => {
     it('should return correct model ID', () => {
-      const client = new LLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
+      const client = new LLMClient('openrouter' as LLMProvider, 'or-test-key', 'openrouter/auto');
 
-      expect(client.getModelId()).toBe('claude-sonnet-4-5');
+      expect(client.getModelId()).toBe('openrouter/auto');
     });
 
     it('should return correct provider', () => {
-      const client = new LLMClient('openai', 'sk-test-key', 'gpt-5.2');
+      const client = new LLMClient('openrouter' as LLMProvider, 'or-test-key', 'openrouter/auto');
 
-      expect(client.getProvider()).toBe('openai');
+      expect(client.getProvider()).toBe('openrouter' as LLMProvider);
     });
   });
 });

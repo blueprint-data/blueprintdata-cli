@@ -77,22 +77,9 @@ export class LLMEnricher {
 
       // Call LLM
       const systemPrompt = getProfilerSystemPrompt();
-      const provider = this.client.getProvider();
-      const modelId = this.client.getModelId();
-      const shouldFallbackModel = provider === 'openai' && modelId.startsWith('gpt-5');
-      const effectiveClient = shouldFallbackModel ? this.client.withModel('gpt-4.1') : this.client;
-      const effectiveModelId = effectiveClient.getModelId();
-
-      if (shouldFallbackModel) {
-        console.warn(
-          'OpenAI GPT-5 chat completions returned empty content; using gpt-4.1 for profiling'
-        );
-      }
-
-      const maxTokens = provider === 'openai' && effectiveModelId.startsWith('gpt-5') ? 8192 : 4096;
-      const result = await effectiveClient.generate(input, {
+      const result = await this.client.generate(input, {
         systemPrompt,
-        maxTokens,
+        maxTokens: 4096,
         temperature: 0.7,
       });
 
@@ -134,9 +121,12 @@ export class LLMEnricher {
       modelCount: number;
       layers: { staging: number; intermediate: number; marts: number };
       domains: string[];
-    }
+    },
+    schemaHints?: string[]
   ): Promise<string> {
     try {
+      const schemasLine =
+        schemaHints && schemaHints.length > 0 ? schemaHints.join(', ') : 'Not specified';
       const input = `
 Company Context:
 - Name: ${companyContext.name || 'Unknown'}
@@ -161,21 +151,11 @@ dbt Project Metadata:
   - Marts: ${projectMetadata.layers.marts}
 - Identified Domains: ${projectMetadata.domains.join(', ')}
 - Key Metrics: ${companyContext.keyMetrics?.join(', ') || 'None identified'}
+- Schema Selection: ${schemasLine}
       `;
 
       const systemPrompt = getProjectSummarySystemPrompt();
-      const provider = this.client.getProvider();
-      const modelId = this.client.getModelId();
-      const shouldFallbackModel = provider === 'openai' && modelId.startsWith('gpt-5');
-      const effectiveClient = shouldFallbackModel ? this.client.withModel('gpt-4.1') : this.client;
-
-      if (shouldFallbackModel) {
-        console.warn(
-          'OpenAI GPT-5 chat completions returned empty content; using gpt-4.1 for project summary'
-        );
-      }
-
-      const result = await effectiveClient.generate(input, {
+      const result = await this.client.generate(input, {
         systemPrompt,
         maxTokens: 2048,
         temperature: 0.7,
@@ -186,7 +166,7 @@ dbt Project Metadata:
       console.error('Failed to generate project summary with LLM:', error);
 
       // Return basic template as fallback
-      return this.generateBasicProjectSummary(companyContext, projectMetadata);
+      return this.generateBasicProjectSummary(companyContext, projectMetadata, schemaHints);
     }
   }
 
@@ -195,14 +175,18 @@ dbt Project Metadata:
    */
   async enrichModelingAnalysis(
     scanResult: DbtScanResult,
-    companyContext?: CompanyContext
+    companyContext?: CompanyContext,
+    schemaHints?: string[]
   ): Promise<string> {
     try {
+      const schemasLine =
+        schemaHints && schemaHints.length > 0 ? schemaHints.join(', ') : 'Not specified';
       const input = `
 Project Overview:
 - Total Models: ${scanResult.modelCount}
 - Total References: ${scanResult.refCount}
 - Total Sources: ${scanResult.sourceCount}
+- Schema Selection: ${schemasLine}
 
 ${
   companyContext
@@ -227,18 +211,7 @@ ${scanResult.models.length > 50 ? `... and ${scanResult.models.length - 50} more
       `;
 
       const systemPrompt = getModelingAnalysisSystemPrompt();
-      const provider = this.client.getProvider();
-      const modelId = this.client.getModelId();
-      const shouldFallbackModel = provider === 'openai' && modelId.startsWith('gpt-5');
-      const effectiveClient = shouldFallbackModel ? this.client.withModel('gpt-4.1') : this.client;
-
-      if (shouldFallbackModel) {
-        console.warn(
-          'OpenAI GPT-5 chat completions returned empty content; using gpt-4.1 for modeling analysis'
-        );
-      }
-
-      const result = await effectiveClient.generate(input, {
+      const result = await this.client.generate(input, {
         systemPrompt,
         maxTokens: 3072,
         temperature: 0.7,
@@ -249,7 +222,7 @@ ${scanResult.models.length > 50 ? `... and ${scanResult.models.length - 50} more
       console.error('Failed to generate modeling analysis with LLM:', error);
 
       // Return basic template as fallback
-      return this.generateBasicModelingAnalysis(scanResult);
+      return this.generateBasicModelingAnalysis(scanResult, schemaHints);
     }
   }
 
@@ -258,8 +231,11 @@ ${scanResult.models.length > 50 ? `... and ${scanResult.models.length - 50} more
    */
   private generateBasicProjectSummary(
     companyContext: CompanyContext,
-    projectMetadata: { name: string; warehouseType: string; modelCount: number }
+    projectMetadata: { name: string; warehouseType: string; modelCount: number },
+    schemaHints?: string[]
   ): string {
+    const schemaLine =
+      schemaHints && schemaHints.length > 0 ? schemaHints.join(', ') : 'Not specified';
     return `# Project Summary
 
 ## Company Context
@@ -277,6 +253,11 @@ This dbt project (${projectMetadata.name}) transforms data in a ${projectMetadat
 **Statistics:**
 - Total models: ${projectMetadata.modelCount}
 
+## Schema Conventions
+
+- Use schema.table references without a database prefix
+- Preferred schemas: ${schemaLine}
+
 ## Getting Started
 
 Review the \`modelling.md\` file to understand existing models and explore the \`models/\` directory for table schemas.
@@ -286,7 +267,9 @@ Review the \`modelling.md\` file to understand existing models and explore the \
   /**
    * Generate basic modeling analysis (fallback)
    */
-  private generateBasicModelingAnalysis(scanResult: DbtScanResult): string {
+  private generateBasicModelingAnalysis(scanResult: DbtScanResult, schemaHints?: string[]): string {
+    const schemaLine =
+      schemaHints && schemaHints.length > 0 ? schemaHints.join(', ') : 'Not specified';
     return `# dbt Modeling Guide
 
 ## Project Overview
@@ -311,6 +294,11 @@ ${scanResult.models
   .join('\n')}
 
 ${scanResult.models.length > 20 ? `... and ${scanResult.models.length - 20} more models` : ''}
+
+## Schema Conventions
+
+- Use schema.table references without a database prefix
+- Preferred schemas: ${schemaLine}
 `;
   }
 

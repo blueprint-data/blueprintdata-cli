@@ -4,8 +4,7 @@ import { config } from 'dotenv';
 config();
 
 const envSchema = z.object({
-  ANTHROPIC_API_KEY: z.string().optional(),
-  OPENAI_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
 
   UI_PORT: z.coerce.number().min(1).max(65535).default(3000),
   GATEWAY_PORT: z.coerce.number().min(1).max(65535).default(8080),

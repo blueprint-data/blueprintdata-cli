@@ -3,10 +3,19 @@ import { createServer, type Server } from 'http';
 import * as jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import type { Database } from '@blueprintdata/database';
+import { renderChartToBase64 } from './chartRenderer.js';
 
 // Message types
 export interface WSMessage {
-  type: 'chat' | 'tool_call' | 'tool_result' | 'error' | 'system' | 'pong';
+  type:
+    | 'chat'
+    | 'tool_call'
+    | 'tool_result'
+    | 'models_request'
+    | 'models_response'
+    | 'error'
+    | 'system'
+    | 'pong';
   id: string;
   payload: unknown;
   timestamp: string;
@@ -15,19 +24,52 @@ export interface WSMessage {
 export interface ChatMessagePayload {
   sessionId: string;
   content: string;
+  modelId?: string;
+}
+
+export interface ModelsRequestPayload {
+  sessionId?: string;
+}
+
+export interface ModelInfoPayload {
+  id: string;
+  name: string;
+  provider: string;
+  contextWindow?: number;
+  costPer1MInputTokens?: number;
+  costPer1MOutputTokens?: number;
+  speed?: string;
+  capabilities?: string[];
+  recommended?: string | null;
+}
+
+export interface ModelsResponsePayload {
+  sessionId?: string;
+  provider: string;
+  defaultModelId: string;
+  models: ModelInfoPayload[];
 }
 
 export interface ToolCallPayload {
+  sessionId?: string;
   tool: string;
   arguments: Record<string, unknown>;
   callId: string;
 }
 
 export interface ToolResultPayload {
+  sessionId?: string;
   callId: string;
   success: boolean;
   result?: unknown;
   error?: string;
+  media?: MediaPayload;
+}
+
+export interface MediaPayload {
+  mimeType: string;
+  data: string;
+  name?: string;
 }
 
 // Client connection
@@ -45,6 +87,8 @@ export interface GatewayConfig {
   database: Database;
   maxConnections?: number;
   heartbeatInterval?: number;
+  handleChatMessage?: (payload: ChatMessagePayload) => Promise<{ content: string; role?: string }>;
+  handleModelsRequest?: (payload: ModelsRequestPayload) => Promise<ModelsResponsePayload>;
 }
 
 export class GatewayServer {
@@ -103,18 +147,15 @@ export class GatewayServer {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const token = url.searchParams.get('token');
 
-    if (!token) {
-      ws.close(1008, 'Missing authentication token');
-      return;
-    }
-
-    // Verify token
+    // Verify token if present, otherwise allow anonymous access
     let payload: { userId: string; username: string } | null = null;
-    try {
-      payload = jwt.verify(token, this.config.jwtSecret) as { userId: string; username: string };
-    } catch {
-      ws.close(1008, 'Invalid authentication token');
-      return;
+    if (token) {
+      try {
+        payload = jwt.verify(token, this.config.jwtSecret) as { userId: string; username: string };
+      } catch {
+        ws.close(1008, 'Invalid authentication token');
+        return;
+      }
     }
 
     // Check max connections
@@ -126,13 +167,13 @@ export class GatewayServer {
     const clientId = uuidv4();
     const client: ClientConnection = {
       ws,
-      userId: payload.userId,
-      username: payload.username,
+      userId: payload?.userId || 'local',
+      username: payload?.username || 'local',
       lastActivity: new Date(),
     };
 
     this.clients.set(clientId, client);
-    console.log(`Client connected: ${payload.username} (${clientId})`);
+    console.log(`Client connected: ${client.username} (${clientId})`);
 
     // Send welcome message
     this.sendToClient(clientId, {
@@ -184,18 +225,83 @@ export class GatewayServer {
 
     console.log(`Received ${message.type} message from ${client.username}`);
 
-    // TODO: Route to Agent service in Phase 4
-    // For now, echo back a simple response
-    this.sendToClient(clientId, {
-      type: 'chat',
-      id: message.id,
-      payload: {
-        sessionId: (message.payload as any)?.sessionId,
-        content: `Echo: ${(message.payload as any)?.content || 'No content'}`,
-        role: 'assistant',
-      },
-      timestamp: new Date().toISOString(),
-    });
+    if (message.type === 'models_request') {
+      const payload = message.payload as ModelsRequestPayload;
+
+      if (!this.config.handleModelsRequest) {
+        this.sendToClient(clientId, {
+          type: 'error',
+          id: uuidv4(),
+          payload: { message: 'Model list not available', sessionId: payload?.sessionId },
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      this.config
+        .handleModelsRequest(payload)
+        .then((response) => {
+          this.sendToClient(clientId, {
+            type: 'models_response',
+            id: message.id,
+            payload: response,
+            timestamp: new Date().toISOString(),
+          });
+        })
+        .catch((error) => {
+          this.sendToClient(clientId, {
+            type: 'error',
+            id: message.id,
+            payload: {
+              message: error instanceof Error ? error.message : 'Unknown error',
+              sessionId: payload?.sessionId,
+            },
+            timestamp: new Date().toISOString(),
+          });
+        });
+      return;
+    }
+
+    if (message.type === 'chat') {
+      const payload = message.payload as ChatMessagePayload;
+
+      if (this.config.handleChatMessage) {
+        this.config
+          .handleChatMessage(payload)
+          .then((response) => {
+            this.sendToClient(clientId, {
+              type: 'chat',
+              id: message.id,
+              payload: {
+                sessionId: payload.sessionId,
+                content: response.content,
+                role: response.role || 'assistant',
+              },
+              timestamp: new Date().toISOString(),
+            });
+          })
+          .catch((error) => {
+            this.sendToClient(clientId, {
+              type: 'error',
+              id: message.id,
+              payload: { message: error instanceof Error ? error.message : 'Unknown error' },
+              timestamp: new Date().toISOString(),
+            });
+          });
+        return;
+      }
+
+      this.sendToClient(clientId, {
+        type: 'chat',
+        id: message.id,
+        payload: {
+          sessionId: payload.sessionId,
+          content: `Echo: ${payload.content || 'No content'}`,
+          role: 'assistant',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 
   private sendToClient(clientId: string, message: WSMessage): void {
@@ -243,4 +349,53 @@ export class GatewayServer {
   getConnectionCount(): number {
     return this.clients.size;
   }
+
+  async broadcastToolResult(payload: ToolResultPayload): Promise<void> {
+    const enrichedPayload = await this.attachChartMedia(payload);
+
+    this.broadcast({
+      type: 'tool_result',
+      id: payload.callId,
+      payload: enrichedPayload,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  private async attachChartMedia(payload: ToolResultPayload): Promise<ToolResultPayload> {
+    if (!payload.success || !payload.result) {
+      return payload;
+    }
+
+    const chartConfig = extractChartConfig(payload.result);
+    if (!chartConfig) {
+      return payload;
+    }
+
+    try {
+      const base64 = await renderChartToBase64(chartConfig);
+      return {
+        ...payload,
+        media: {
+          mimeType: 'image/png',
+          data: base64,
+        },
+      };
+    } catch (error) {
+      console.error('Failed to render chart image', error);
+      return payload;
+    }
+  }
+}
+
+function extractChartConfig(result: unknown): Record<string, unknown> | null {
+  if (!result || typeof result !== 'object') {
+    return null;
+  }
+
+  const chartConfig = (result as { chartConfig?: unknown }).chartConfig;
+  if (!chartConfig || typeof chartConfig !== 'object') {
+    return null;
+  }
+
+  return chartConfig as Record<string, unknown>;
 }

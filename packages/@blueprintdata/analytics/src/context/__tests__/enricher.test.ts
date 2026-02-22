@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { LLMEnricher } from '../enricher.js';
 import { MockLLMClient } from '../../__mocks__/llm/MockLLMClient.js';
+import type { LLMProvider } from '@blueprintdata/models';
 import type { EnhancedTableStats, DbtModelMetadata, CompanyContext } from '@blueprintdata/models';
 import type { DbtScanResult } from '../scanner.js';
 
@@ -9,7 +10,7 @@ describe('LLMEnricher', () => {
   let enricher: LLMEnricher;
 
   beforeEach(() => {
-    mockClient = new MockLLMClient('anthropic', 'test-key', 'claude-sonnet-4-5');
+    mockClient = new MockLLMClient('openrouter' as LLMProvider, 'test-key', 'openrouter/auto');
     enricher = new LLMEnricher(mockClient);
   });
 

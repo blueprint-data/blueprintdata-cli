@@ -13,96 +13,133 @@ export interface LLMModel {
 }
 
 const modelsConfig = {
-  lastUpdated: '2026-02-11',
-  anthropic: [
+  lastUpdated: '2026-02-22',
+  openrouter: [
     {
-      id: 'claude-opus-4-6',
-      name: 'Claude Opus 4.6',
-      provider: 'anthropic',
-      contextWindow: 200000,
-      costPer1MInputTokens: 5.0,
-      costPer1MOutputTokens: 25.0,
-      speed: 'slow',
-      capabilities: ['analysis', 'reasoning', 'code', 'highest-quality', 'long-context'],
-      recommended: null,
-    },
-    {
-      id: 'claude-sonnet-4-5',
-      name: 'Claude Sonnet 4.5',
-      provider: 'anthropic',
-      contextWindow: 200000,
-      costPer1MInputTokens: 3.0,
-      costPer1MOutputTokens: 15.0,
+      id: 'openrouter/auto',
+      name: 'OpenRouter Auto Router',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
       speed: 'balanced',
-      capabilities: ['analysis', 'reasoning', 'code', 'long-context'],
+      capabilities: ['routing', 'auto', 'balanced'],
       recommended: 'general',
     },
     {
-      id: 'claude-haiku-4-5',
-      name: 'Claude Haiku 4.5',
-      provider: 'anthropic',
-      contextWindow: 200000,
-      costPer1MInputTokens: 1.0,
-      costPer1MOutputTokens: 5.0,
-      speed: 'fast',
-      capabilities: ['analysis', 'speed', 'cost-effective'],
-      recommended: 'profiling',
-    },
-  ],
-  openai: [
-    {
-      id: 'gpt-5.2',
-      name: 'GPT-5.2',
-      provider: 'openai',
-      contextWindow: 400000,
-      costPer1MInputTokens: 1.75,
-      costPer1MOutputTokens: 14.0,
-      speed: 'balanced',
-      capabilities: ['analysis', 'reasoning', 'code', 'multimodal', 'long-context'],
-      recommended: 'general',
-    },
-    {
-      id: 'gpt-5-mini',
-      name: 'GPT-5 mini',
-      provider: 'openai',
-      contextWindow: 400000,
-      costPer1MInputTokens: 0.25,
-      costPer1MOutputTokens: 2.0,
-      speed: 'fast',
-      capabilities: ['analysis', 'speed', 'cost-effective'],
-      recommended: 'profiling',
-    },
-    {
-      id: 'gpt-5-nano',
-      name: 'GPT-5 nano',
-      provider: 'openai',
-      contextWindow: 400000,
-      costPer1MInputTokens: 0.05,
-      costPer1MOutputTokens: 0.4,
+      id: 'google/gemini-2.5-flash',
+      name: 'Gemini 2.5 Flash',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
       speed: 'fast',
       capabilities: ['speed', 'cost-effective'],
+      recommended: 'profiling',
+    },
+    {
+      id: 'minimax/minimax-m2.5-20260211',
+      name: 'Minimax M2.5',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
+      speed: 'balanced',
+      capabilities: ['analysis', 'general'],
       recommended: null,
     },
     {
-      id: 'gpt-4.1',
-      name: 'GPT-4.1',
-      provider: 'openai',
-      contextWindow: 1047576,
-      costPer1MInputTokens: 2.0,
-      costPer1MOutputTokens: 8.0,
+      id: 'moonshotai/kimi-k2.5-0127',
+      name: 'Kimi K2.5 0127',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
       speed: 'balanced',
-      capabilities: ['analysis', 'code', 'long-context'],
+      capabilities: ['analysis', 'general'],
+      recommended: null,
+    },
+    {
+      id: 'z-ai/glm-5-20260211',
+      name: 'GLM 5',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
+      speed: 'balanced',
+      capabilities: ['analysis', 'general'],
+      recommended: null,
+    },
+    {
+      id: 'google/gemini-3-flash-preview-20251217',
+      name: 'Gemini 3 Flash Preview',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
+      speed: 'fast',
+      capabilities: ['speed', 'preview'],
+      recommended: null,
+    },
+    {
+      id: 'deepseek/deepseek-v3.2-20251201',
+      name: 'Deepseek V3.2',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
+      speed: 'balanced',
+      capabilities: ['analysis', 'general'],
+      recommended: null,
+    },
+    {
+      id: 'x-ai/grok-4.1-fast',
+      name: 'Grok 4.1 Fast',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
+      speed: 'fast',
+      capabilities: ['speed', 'general'],
+      recommended: null,
+    },
+    {
+      id: 'anthropic/claude-4.6-opus-20260205',
+      name: 'Claude Opus 4.6',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
+      speed: 'slow',
+      capabilities: ['analysis', 'reasoning'],
+      recommended: null,
+    },
+    {
+      id: 'anthropic/claude-4.5-sonnet-20250929',
+      name: 'Claude Sonnet 4.5',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
+      speed: 'balanced',
+      capabilities: ['analysis', 'reasoning'],
+      recommended: null,
+    },
+    {
+      id: 'arcee-ai/trinity-large-preview:free',
+      name: 'Trinity Large Preview (free)',
+      provider: 'openrouter',
+      contextWindow: 0,
+      costPer1MInputTokens: 0,
+      costPer1MOutputTokens: 0,
+      speed: 'fast',
+      capabilities: ['free', 'preview'],
       recommended: null,
     },
   ],
 };
 
-export const ANTHROPIC_MODELS: LLMModel[] = modelsConfig.anthropic.map((model) => ({
-  ...model,
-  recommended: model.recommended || undefined,
-})) as LLMModel[];
-
-export const OPENAI_MODELS: LLMModel[] = modelsConfig.openai.map((model) => ({
+export const OPENROUTER_MODELS: LLMModel[] = modelsConfig.openrouter.map((model) => ({
   ...model,
   recommended: model.recommended || undefined,
 })) as LLMModel[];
@@ -111,10 +148,8 @@ export const OPENAI_MODELS: LLMModel[] = modelsConfig.openai.map((model) => ({
  * Get all models for a specific provider
  */
 export function getModelsForProvider(provider: LLMProvider): LLMModel[] {
-  if (provider === 'anthropic') {
-    return ANTHROPIC_MODELS;
-  } else if (provider === 'openai') {
-    return OPENAI_MODELS;
+  if (provider === 'openrouter') {
+    return OPENROUTER_MODELS;
   }
   return [];
 }
@@ -123,7 +158,7 @@ export function getModelsForProvider(provider: LLMProvider): LLMModel[] {
  * Get a specific model by ID
  */
 export function getModel(modelId: string): LLMModel | undefined {
-  const allModels = [...ANTHROPIC_MODELS, ...OPENAI_MODELS];
+  const allModels = [...OPENROUTER_MODELS];
   return allModels.find((m) => m.id === modelId);
 }
 
@@ -176,8 +211,12 @@ export function formatModelOption(model: LLMModel): {
 
   const hint = [
     `${model.speed === 'fast' ? 'Fast' : model.speed === 'slow' ? 'Slower' : 'Balanced'}`,
-    `${(model.contextWindow / 1000).toFixed(0)}K context`,
-    `$${model.costPer1MInputTokens}/$${model.costPer1MOutputTokens} per 1M tokens`,
+    model.contextWindow > 0
+      ? `${(model.contextWindow / 1000).toFixed(0)}K context`
+      : 'Context varies',
+    model.costPer1MInputTokens > 0 || model.costPer1MOutputTokens > 0
+      ? `$${model.costPer1MInputTokens}/$${model.costPer1MOutputTokens} per 1M tokens`
+      : 'Pricing varies',
   ].join(' • ');
 
   return {

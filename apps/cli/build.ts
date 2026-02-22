@@ -1,6 +1,7 @@
 import { build } from 'esbuild';
-import { mkdirSync } from 'fs';
-import { chmod } from 'fs/promises';
+import { mkdirSync, existsSync } from 'fs';
+import { chmod, cp, rm } from 'fs/promises';
+import path from 'path';
 
 // Ensure dist directory exists
 mkdirSync('dist', { recursive: true });
@@ -28,6 +29,20 @@ try {
 } catch (error) {
   console.warn('Warning: Could not set execute permissions:', error);
   console.log('Run: chmod +x dist/index.js');
+}
+
+const webDistPath = path.join('..', 'web', 'dist');
+const cliWebPath = path.join('dist', 'web');
+
+if (existsSync(webDistPath)) {
+  try {
+    await rm(cliWebPath, { recursive: true, force: true });
+    await cp(webDistPath, cliWebPath, { recursive: true });
+  } catch (error) {
+    console.warn('Warning: Failed to copy web assets into CLI dist:', error);
+  }
+} else {
+  console.warn('Warning: Web app build not found. Run `bun run build:web` first.');
 }
 
 console.log('✅ Build complete!');

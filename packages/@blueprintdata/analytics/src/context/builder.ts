@@ -104,6 +104,7 @@ export class ContextBuilder {
    * Generate system_prompt.md
    */
   private async generateSystemPrompt(contextDir: string): Promise<void> {
+    const schemaConventions = this.buildSchemaConventionsSection();
     const systemPrompt = `# System Prompt
 
 You are an expert analytics agent working with a dbt (data build tool) project.
@@ -149,6 +150,8 @@ All relevant project information is available in the \`agent-context/\` director
 - Use markdown formatting for code and queries
 - Present options when multiple approaches are valid
 - Highlight potential issues or risks
+
+${schemaConventions}
 
 Remember: You are a helpful assistant that empowers users to work with their data effectively.
 `;
@@ -204,20 +207,25 @@ Remember: You are a helpful assistant that empowers users to work with their dat
           )
         ) as string[];
 
-        const enrichedSummary = await enricher.enrichProjectSummary(config.companyContext, {
-          name: dbtProject.name || 'Unknown',
-          dbtVersion: dbtProject.version,
-          warehouseType: config.warehouseType,
-          modelCount: scanResult.modelCount,
-          layers: {
-            staging: stagingModels,
-            intermediate: intermediateModels,
-            marts: martsModels,
+        const enrichedSummary = await enricher.enrichProjectSummary(
+          config.companyContext,
+          {
+            name: dbtProject.name || 'Unknown',
+            dbtVersion: dbtProject.version,
+            warehouseType: config.warehouseType,
+            modelCount: scanResult.modelCount,
+            layers: {
+              staging: stagingModels,
+              intermediate: intermediateModels,
+              marts: martsModels,
+            },
+            domains,
           },
-          domains,
-        });
+          this.getSchemaHints()
+        );
 
-        await fs.writeFile(path.join(contextDir, 'summary.md'), enrichedSummary, 'utf-8');
+        const summaryWithConventions = this.appendSchemaConventions(enrichedSummary);
+        await fs.writeFile(path.join(contextDir, 'summary.md'), summaryWithConventions, 'utf-8');
         return;
       } catch (error) {
         console.warn('LLM enrichment failed, using basic summary:', error);
@@ -273,7 +281,8 @@ To work with this project:
 *Note: This summary is auto-generated. You can customize it to add company-specific context.*
 `;
 
-    await fs.writeFile(path.join(contextDir, 'summary.md'), summary, 'utf-8');
+    const summaryWithConventions = this.appendSchemaConventions(summary);
+    await fs.writeFile(path.join(contextDir, 'summary.md'), summaryWithConventions, 'utf-8');
   }
 
   /**
@@ -292,9 +301,15 @@ To work with this project:
         console.log('Generating LLM-enriched modeling documentation...');
         const enrichedModelling = await enricher.enrichModelingAnalysis(
           scanResult,
-          config.companyContext
+          config.companyContext,
+          this.getSchemaHints()
         );
-        await fs.writeFile(path.join(contextDir, 'modelling.md'), enrichedModelling, 'utf-8');
+        const modellingWithConventions = this.appendSchemaConventions(enrichedModelling);
+        await fs.writeFile(
+          path.join(contextDir, 'modelling.md'),
+          modellingWithConventions,
+          'utf-8'
+        );
         return;
       } catch (error) {
         console.warn('LLM enrichment failed, using basic modeling doc:', error);
@@ -304,7 +319,8 @@ To work with this project:
     // Fallback to basic modelling.md
     const scanner = new DbtScanner(this.options.projectPath);
     const modellingMarkdown = scanner.generateModelingMarkdown(scanResult);
-    await fs.writeFile(path.join(contextDir, 'modelling.md'), modellingMarkdown, 'utf-8');
+    const modellingWithConventions = this.appendSchemaConventions(modellingMarkdown);
+    await fs.writeFile(path.join(contextDir, 'modelling.md'), modellingWithConventions, 'utf-8');
   }
 
   /**
@@ -336,7 +352,8 @@ To work with this project:
       const scanResult = await scanner.scanModels();
 
       const modellingMarkdown = scanner.generateModelingMarkdown(scanResult);
-      await fs.writeFile(path.join(contextDir, 'modelling.md'), modellingMarkdown, 'utf-8');
+      const modellingWithConventions = this.appendSchemaConventions(modellingMarkdown);
+      await fs.writeFile(path.join(contextDir, 'modelling.md'), modellingWithConventions, 'utf-8');
     }
 
     // Re-profile warehouse tables
@@ -429,5 +446,46 @@ To work with this project:
 
     console.log(`  Resolved to ${tables.length} warehouse tables`);
     return { tables };
+  }
+
+  private getSchemaHints(): string[] {
+    const { schemaSelection, warehouseConnection } = this.options.config;
+    const hints: string[] = [];
+
+    if (schemaSelection && schemaSelection.length > 0) {
+      hints.push(...schemaSelection);
+    } else if (warehouseConnection.schema) {
+      hints.push(warehouseConnection.schema);
+    }
+
+    return Array.from(new Set(hints));
+  }
+
+  private buildSchemaConventionsSection(): string {
+    const hints = this.getSchemaHints();
+    const hintLine = hints.length
+      ? `- **Preferred Schemas:** ${hints.join(', ')}`
+      : '- **Preferred Schemas:** Use the schemas documented in agent-context/models or dbt profiles.';
+
+    return `## Schema Conventions
+
+- **Use schema.table:** Reference tables as \`SCHEMA.TABLE\` without a database prefix.
+- **Avoid database prefixes:** Do not prepend database names (e.g., \`mydb.analytics\`) unless explicitly provided.
+${hintLine}
+`;
+  }
+
+  private appendSchemaConventions(content: string): string {
+    if (/##\s+Schema\s+Conventions/i.test(content)) {
+      return content;
+    }
+
+    const section = this.buildSchemaConventionsSection();
+    return `${content.trim()}
+
+---
+
+${section}
+`;
   }
 }

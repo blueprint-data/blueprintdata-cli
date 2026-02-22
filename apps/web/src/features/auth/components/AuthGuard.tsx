@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, useLocation } from '@tanstack/react-router';
+import { Navigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
 
 interface AuthGuardProps {
@@ -8,7 +8,6 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, isLoading } = useAuth();
-  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -19,7 +18,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" search={{ redirect: location.href }} />;
+    return <Navigate to="/" />;
   }
 
   return <>{children}</>;

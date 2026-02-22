@@ -27,7 +27,7 @@ An AI-powered assistant for your dbt project:
 - Automatically profiles your data warehouse tables
 - Generates rich documentation with business context
 - Provides intelligent insights about your data
-- Supports Anthropic Claude and OpenAI GPT models
+- Uses OpenRouter for access to a broad model catalog
 - Interactive chat interface (coming soon)
 
 [→ Learn more about Analytics](docs/features/ANALYTICS.md)
@@ -70,6 +70,7 @@ blueprintdata new my-project --stack lite-bigquery
 ```
 
 Available templates:
+
 - `lite-postgres` - PostgreSQL data stack
 - `lite-bigquery` - BigQuery data stack
 
@@ -129,11 +130,13 @@ Options:
 ```
 
 **Example**:
+
 ```bash
 blueprintdata new analytics-stack --stack lite-bigquery
 ```
 
 This creates a complete project with:
+
 - Meltano configuration for extraction
 - dbt project for transformation
 - GitHub Actions workflows for CI/CD
@@ -152,6 +155,7 @@ blueprintdata analytics init
 ```
 
 The initialization process:
+
 1. Validates your dbt project
 2. Connects to your data warehouse
 3. Selects LLM models
@@ -172,6 +176,7 @@ Options:
 ```
 
 **Examples**:
+
 ```bash
 # Sync all changed models
 blueprintdata analytics sync
@@ -190,6 +195,7 @@ blueprintdata analytics chat
 ```
 
 Starts an interactive chat interface with:
+
 - Natural language queries
 - SQL generation and execution
 - Chart generation
@@ -249,10 +255,10 @@ After initialization, configuration is stored in `.blueprintdata/config.json`:
     "dbtProfilesPath": "~/.dbt/profiles.yml"
   },
   "llm": {
-    "provider": "anthropic",
-    "apiKey": "sk-ant-...",
-    "chatModel": "claude-3-5-sonnet-20241022",
-    "profilingModel": "claude-3-5-haiku-20241022"
+    "provider": "openrouter",
+    "apiKey": "or-...",
+    "chatModel": "openrouter/auto",
+    "profilingModel": "google/gemini-2.5-flash"
   },
   "warehouse": {
     "type": "bigquery",
@@ -270,8 +276,7 @@ After initialization, configuration is stored in `.blueprintdata/config.json`:
 
 ```bash
 # LLM API Keys
-export ANTHROPIC_API_KEY=sk-ant-...
-export OPENAI_API_KEY=sk-...
+export OPENROUTER_API_KEY=or-...
 
 # Analytics UI (optional)
 export UI_PORT=3000
@@ -455,7 +460,7 @@ BlueprintData CLI is built as a **Bun workspace monorepo** with TypeScript proje
 - **Web**: React 18 + TanStack Router + Vite
 - **Database**: SQLite + Drizzle ORM
 - **Auth**: JWT + bcrypt
-- **LLM**: Anthropic SDK + OpenAI SDK
+- **LLM**: OpenRouter SDK
 - **Warehouses**: BigQuery + PostgreSQL
 
 ### Design Patterns
@@ -524,11 +529,11 @@ MIT
 ## Acknowledgments
 
 Built with:
+
 - [Bun](https://bun.sh/) - Fast all-in-one JavaScript runtime
 - [dbt](https://www.getdbt.com/) - Data transformation tool
 - [Meltano](https://meltano.com/) - DataOps platform
-- [Anthropic Claude](https://www.anthropic.com/) - AI assistant
-- [OpenAI GPT](https://openai.com/) - AI models
+- [OpenRouter](https://openrouter.ai/) - Unified AI model access
 - [Drizzle ORM](https://orm.drizzle.team/) - TypeScript ORM
 - [TanStack Router](https://tanstack.com/router) - Type-safe routing
 

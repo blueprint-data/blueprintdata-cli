@@ -1,11 +1,44 @@
-import Anthropic from '@anthropic-ai/sdk';
-import OpenAI from 'openai';
+import { OpenRouter } from '@openrouter/sdk';
 import { LLMProvider } from '@blueprintdata/models';
 
 export interface GenerateOptions {
   temperature?: number;
   maxTokens?: number;
   systemPrompt?: string;
+}
+
+export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
+
+export interface ToolCall {
+  id?: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface ChatMessage {
+  role: ChatRole;
+  content: string;
+  toolCallId?: string;
+  toolCalls?: ToolCall[];
+}
+
+export interface ToolSchema {
+  name: string;
+  description: string;
+  parameters: Array<{
+    name: string;
+    type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+    description: string;
+    required?: boolean;
+    enum?: string[];
+  }>;
+}
+
+export interface ChatGenerateOptions {
+  temperature?: number;
+  maxTokens?: number;
+  tools?: ToolSchema[];
+  toolChoice?: 'auto' | 'none' | { name: string };
 }
 
 export interface GenerateResult {
@@ -16,27 +49,26 @@ export interface GenerateResult {
   };
 }
 
+export interface ChatGenerateResult extends GenerateResult {
+  toolCalls?: ToolCall[];
+}
+
 /**
- * Unified LLM client that abstracts Anthropic and OpenAI APIs
+ * Unified LLM client that uses OpenRouter APIs
  */
 export class LLMClient {
   private provider: LLMProvider;
   private apiKey: string;
   private modelId: string;
-  private anthropicClient?: Anthropic;
-  private openaiClient?: OpenAI;
+  private openRouterClient?: OpenRouter;
 
   constructor(provider: LLMProvider, apiKey: string, modelId: string) {
     this.provider = provider;
     this.apiKey = apiKey;
     this.modelId = modelId;
 
-    if (provider === 'anthropic') {
-      this.anthropicClient = new Anthropic({
-        apiKey: this.apiKey,
-      });
-    } else if (provider === 'openai') {
-      this.openaiClient = new OpenAI({
+    if (provider === 'openrouter') {
+      this.openRouterClient = new OpenRouter({
         apiKey: this.apiKey,
       });
     }
@@ -48,95 +80,27 @@ export class LLMClient {
   async generate(prompt: string, options?: GenerateOptions): Promise<GenerateResult> {
     const maxTokens = options?.maxTokens ?? 4096;
 
-    if (this.provider === 'anthropic') {
-      const temperature = options?.temperature ?? 0.7;
-      return await this.generateAnthropic(prompt, options?.systemPrompt, temperature, maxTokens);
-    } else if (this.provider === 'openai') {
-      return await this.generateOpenAI(
-        prompt,
-        options?.systemPrompt,
-        options?.temperature,
-        maxTokens
-      );
+    if (this.provider !== 'openrouter' || !this.openRouterClient) {
+      throw new Error(`Unsupported LLM provider: ${this.provider}`);
     }
 
-    throw new Error(`Unsupported LLM provider: ${this.provider}`);
-  }
+    const temperature = options?.temperature ?? 0.7;
+    const messages = [] as Array<{ role: 'system' | 'user'; content: string }>;
 
-  /**
-   * Generate using Anthropic Claude
-   */
-  private async generateAnthropic(
-    prompt: string,
-    systemPrompt?: string,
-    temperature: number = 0.7,
-    maxTokens: number = 4096
-  ): Promise<GenerateResult> {
-    if (!this.anthropicClient) {
-      throw new Error('Anthropic client not initialized');
+    if (options?.systemPrompt) {
+      messages.push({ role: 'system', content: options.systemPrompt });
     }
 
-    const messages: Anthropic.MessageParam[] = [
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ];
+    messages.push({ role: 'user', content: prompt });
 
-    const response = await this.anthropicClient.messages.create({
+    const response = await this.openRouterClient.chat.send({
       model: this.modelId,
-      max_tokens: maxTokens,
+      messages,
       temperature,
-      system: systemPrompt,
-      messages,
+      maxTokens,
     });
 
-    const content = response.content[0].type === 'text' ? response.content[0].text : '';
-
-    return {
-      content,
-      tokensUsed: {
-        input: response.usage.input_tokens,
-        output: response.usage.output_tokens,
-      },
-    };
-  }
-
-  /**
-   * Generate using OpenAI GPT
-   */
-  private async generateOpenAI(
-    prompt: string,
-    systemPrompt?: string,
-    temperature?: number,
-    maxTokens: number = 4096
-  ): Promise<GenerateResult> {
-    if (!this.openaiClient) {
-      throw new Error('OpenAI client not initialized');
-    }
-
-    const messages: OpenAI.ChatCompletionMessageParam[] = [];
-
-    if (systemPrompt) {
-      messages.push({
-        role: 'system',
-        content: systemPrompt,
-      });
-    }
-
-    messages.push({
-      role: 'user',
-      content: prompt,
-    });
-
-    const response = await this.openaiClient.chat.completions.create({
-      model: this.modelId,
-      messages,
-      max_completion_tokens: maxTokens,
-      ...(temperature === 1 ? { temperature } : {}),
-    });
-
-    const message = response.choices[0]?.message;
+    const message = response.choices?.[0]?.message as { content?: unknown } | undefined;
     let content = '';
 
     const extractText = (value: unknown): string => {
@@ -148,12 +112,6 @@ export class LLMClient {
           const textValue = (value as { text?: unknown }).text;
           if (typeof textValue === 'string') {
             return textValue;
-          }
-          if (textValue && typeof textValue === 'object' && 'value' in textValue) {
-            const textInner = (textValue as { value?: unknown }).value;
-            if (typeof textInner === 'string') {
-              return textInner;
-            }
           }
         }
         if ('value' in value && typeof (value as { value?: unknown }).value === 'string') {
@@ -168,85 +126,109 @@ export class LLMClient {
 
     if (typeof message?.content === 'string') {
       content = message.content;
-    } else {
-      const contentParts = message?.content as unknown;
-      if (Array.isArray(contentParts)) {
-        content = contentParts.map((part) => extractText(part)).join('');
-      }
+    } else if (Array.isArray(message?.content)) {
+      content = message?.content.map((part) => extractText(part)).join('') ?? '';
+    } else if (message?.content) {
+      content = extractText(message.content);
     }
 
     if (!content) {
       if (process.env.BLUEPRINTDATA_VERBOSE === '1') {
-        const messageDebug = {
-          role: message?.role,
-          messageKeys: message ? Object.keys(message) : [],
-          contentType: Array.isArray(message?.content) ? 'array' : typeof message?.content,
-          contentLength:
-            typeof message?.content === 'string'
-              ? message.content.length
-              : Array.isArray(message?.content)
-                ? (message.content as unknown[]).length
-                : undefined,
-          contentPreview: Array.isArray(message?.content)
-            ? message?.content.map((part) =>
-                typeof part === 'string'
-                  ? part.slice(0, 80)
-                  : part && typeof part === 'object'
-                    ? Object.keys(part).slice(0, 6)
-                    : typeof part
-              )
-            : typeof message?.content === 'string'
-              ? message?.content.slice(0, 120)
-              : undefined,
-          refusal:
-            message && typeof (message as { refusal?: unknown }).refusal === 'string'
-              ? (message as { refusal?: string }).refusal
-              : undefined,
-        };
-        const responseDebug = {
-          id: response.id,
-          model: response.model,
-          usage: response.usage,
-          choices: response.choices.map((choice) => ({
-            index: choice.index,
-            finishReason: choice.finish_reason,
-            choiceKeys: Object.keys(choice),
-            message: {
-              role: choice.message?.role,
-              contentType: Array.isArray(choice.message?.content)
-                ? 'array'
-                : typeof choice.message?.content,
-              contentLength:
-                typeof choice.message?.content === 'string'
-                  ? choice.message.content.length
-                  : Array.isArray(choice.message?.content)
-                    ? (choice.message.content as unknown[]).length
-                    : undefined,
-              messageKeys: choice.message ? Object.keys(choice.message) : [],
-              refusal:
-                choice.message &&
-                typeof (choice.message as { refusal?: unknown }).refusal === 'string'
-                  ? (choice.message as { refusal?: string }).refusal
-                  : undefined,
-            },
-          })),
-        };
-        console.warn('OpenAI empty content debug:', messageDebug);
-        console.warn('OpenAI response debug:', responseDebug);
+        console.warn('OpenRouter returned empty content', {
+          model: this.modelId,
+          responseId: (response as { id?: string }).id,
+        });
       }
-      const refusal =
-        message && typeof (message as { refusal?: unknown }).refusal === 'string'
-          ? (message as { refusal?: string }).refusal
-          : undefined;
-      if (refusal) {
-        throw new Error(`OpenAI refusal: ${refusal}`);
-      }
-      throw new Error('OpenAI returned empty content');
+      throw new Error('OpenRouter returned empty content');
     }
-    const usage = response.usage;
+
+    const usage = response.usage as
+      | { prompt_tokens?: number; completion_tokens?: number }
+      | undefined;
 
     return {
       content,
+      tokensUsed: {
+        input: usage?.prompt_tokens || 0,
+        output: usage?.completion_tokens || 0,
+      },
+    };
+  }
+
+  /**
+   * Generate a completion from chat messages (supports tools)
+   */
+  async generateChat(
+    messages: ChatMessage[],
+    options?: ChatGenerateOptions
+  ): Promise<ChatGenerateResult> {
+    const maxTokens = options?.maxTokens ?? 4096;
+
+    if (this.provider !== 'openrouter' || !this.openRouterClient) {
+      throw new Error(`Unsupported LLM provider: ${this.provider}`);
+    }
+
+    const temperature = options?.temperature ?? 0.7;
+    const tools = options?.tools ? this.buildTools(options.tools) : undefined;
+    const toolChoice = options?.toolChoice;
+
+    const response = await this.openRouterClient.chat.send({
+      model: this.modelId,
+      messages: this.buildMessages(messages) as unknown as Parameters<
+        typeof this.openRouterClient.chat.send
+      >[0]['messages'],
+      temperature,
+      maxTokens,
+      tools: tools as Parameters<typeof this.openRouterClient.chat.send>[0]['tools'],
+      toolChoice: toolChoice as Parameters<typeof this.openRouterClient.chat.send>[0]['toolChoice'],
+    });
+
+    const message = response.choices?.[0]?.message as
+      | {
+          content?: unknown;
+          tool_calls?: Array<{
+            id?: string;
+            type?: string;
+            function?: { name?: string; arguments?: unknown };
+          }>;
+          toolCalls?: Array<{
+            id?: string;
+            type?: string;
+            function?: { name?: string; arguments?: unknown };
+          }>;
+        }
+      | undefined;
+
+    const toolCalls = this.extractToolCalls(message?.toolCalls ?? message?.tool_calls);
+    const content = this.extractContent(message?.content);
+
+    if (process.env.BLUEPRINTDATA_VERBOSE === '1') {
+      const toolCallCount = toolCalls?.length ?? 0;
+      console.log('OpenRouter chat response received', {
+        model: this.modelId,
+        responseId: (response as { id?: string }).id,
+        contentLength: content?.length ?? 0,
+        toolCallCount,
+      });
+    }
+
+    if (!content && (!toolCalls || toolCalls.length === 0)) {
+      if (process.env.BLUEPRINTDATA_VERBOSE === '1') {
+        console.warn('OpenRouter returned empty content', {
+          model: this.modelId,
+          responseId: (response as { id?: string }).id,
+        });
+      }
+      throw new Error('OpenRouter returned empty content');
+    }
+
+    const usage = response.usage as
+      | { prompt_tokens?: number; completion_tokens?: number }
+      | undefined;
+
+    return {
+      content,
+      toolCalls,
       tokensUsed: {
         input: usage?.prompt_tokens || 0,
         output: usage?.completion_tokens || 0,
@@ -273,6 +255,145 @@ export class LLMClient {
    */
   withModel(modelId: string): LLMClient {
     return new LLMClient(this.provider, this.apiKey, modelId);
+  }
+
+  private extractContent(value: unknown): string {
+    const extractText = (inner: unknown): string => {
+      if (typeof inner === 'string') {
+        return inner;
+      }
+      if (inner && typeof inner === 'object') {
+        if ('text' in inner) {
+          const textValue = (inner as { text?: unknown }).text;
+          if (typeof textValue === 'string') {
+            return textValue;
+          }
+        }
+        if ('value' in inner && typeof (inner as { value?: unknown }).value === 'string') {
+          return (inner as { value?: string }).value ?? '';
+        }
+        if ('content' in inner) {
+          return extractText((inner as { content?: unknown }).content);
+        }
+      }
+      return '';
+    };
+
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.map((part) => extractText(part)).join('') ?? '';
+    }
+    if (value) {
+      return extractText(value);
+    }
+    return '';
+  }
+
+  private extractToolCalls(
+    toolCalls?: Array<{
+      id?: string;
+      type?: string;
+      function?: { name?: string; arguments?: unknown };
+    }>
+  ): ToolCall[] | undefined {
+    if (!toolCalls || toolCalls.length === 0) {
+      return undefined;
+    }
+
+    const results: ToolCall[] = [];
+
+    for (const call of toolCalls) {
+      const name = call.function?.name ? String(call.function.name) : '';
+      const rawArgs = call.function?.arguments;
+      let args: Record<string, unknown> = {};
+
+      if (typeof rawArgs === 'string') {
+        try {
+          args = JSON.parse(rawArgs);
+        } catch {
+          args = {};
+        }
+      } else if (rawArgs && typeof rawArgs === 'object') {
+        args = rawArgs as Record<string, unknown>;
+      }
+
+      if (!name) {
+        continue;
+      }
+
+      results.push({
+        id: call.id,
+        name,
+        arguments: args,
+      });
+    }
+
+    return results;
+  }
+
+  private buildMessages(messages: ChatMessage[]): Array<Record<string, unknown>> {
+    return messages.map((message, index) => {
+      if (message.role === 'tool') {
+        return {
+          role: 'tool',
+          content: message.content,
+          toolCallId: message.toolCallId || `tool_call_${index}`,
+        };
+      }
+
+      if (message.role === 'assistant' && message.toolCalls && message.toolCalls.length > 0) {
+        return {
+          role: 'assistant',
+          content: message.content,
+          toolCalls: message.toolCalls.map((call, callIndex) => ({
+            id: call.id || `tool_call_${index}_${callIndex}`,
+            type: 'function',
+            function: {
+              name: call.name,
+              arguments: JSON.stringify(call.arguments ?? {}),
+            },
+          })),
+        };
+      }
+
+      return {
+        role: message.role,
+        content: message.content,
+      };
+    });
+  }
+
+  private buildTools(tools: ToolSchema[]): Array<Record<string, unknown>> {
+    return tools.map((tool) => {
+      const properties: Record<string, Record<string, unknown>> = {};
+      const required: string[] = [];
+
+      for (const param of tool.parameters) {
+        properties[param.name] = {
+          type: param.type,
+          description: param.description,
+          ...(param.enum ? { enum: param.enum } : {}),
+        };
+        if (param.required) {
+          required.push(param.name);
+        }
+      }
+
+      return {
+        type: 'function',
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: {
+            type: 'object',
+            properties,
+            ...(required.length > 0 ? { required } : {}),
+          },
+        },
+      };
+    });
   }
 }
 

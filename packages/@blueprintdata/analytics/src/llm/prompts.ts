@@ -181,6 +181,13 @@ OUTPUT FORMAT (STRICT MARKDOWN):
 
 ---
 
+## Schema Conventions
+
+- State the schema naming convention for final analytics tables
+- Use schema.table without database prefixes unless explicitly provided
+
+---
+
 ## Analytical Capabilities
 
 **Available Data Domains:**
@@ -273,6 +280,13 @@ OUTPUT FORMAT (STRICT MARKDOWN):
 
 **Transformation Flow:**
 - Sources → Staging → Intermediate → Marts
+
+---
+
+## Schema Conventions
+
+- Describe how to reference tables (schema.table)
+- Avoid database prefixes unless explicitly required
 
 ---
 

@@ -12,7 +12,7 @@ export class MockLLMClient extends LLMClient {
   private tokenCounts: { input: number; output: number } = { input: 0, output: 0 };
 
   constructor(
-    provider: LLMProvider = 'anthropic',
+    provider: LLMProvider = 'openrouter' as LLMProvider,
     apiKey: string = 'test-key',
     model: string = 'test-model'
   ) {
@@ -148,7 +148,7 @@ export function createMockLLMClient(overrides?: {
   defaultResponse?: string;
 }): MockLLMClient {
   const client = new MockLLMClient(
-    overrides?.provider || 'anthropic',
+    overrides?.provider || ('openrouter' as LLMProvider),
     'test-key',
     overrides?.model || 'test-model'
   );

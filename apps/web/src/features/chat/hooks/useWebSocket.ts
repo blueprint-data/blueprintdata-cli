@@ -1,30 +1,30 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { WSMessage } from '@blueprintdata/gateway';
 
-interface UseWebSocketOptions {
+interface UseWebSocketOptions<TMessage> {
   url: string;
-  token: string | null;
-  onMessage?: (message: WSMessage) => void;
+  token?: string | null;
+  onMessage?: (message: TMessage) => void;
   onOpen?: () => void;
   onClose?: () => void;
   onError?: (error: Event) => void;
 }
 
-interface UseWebSocketReturn {
-  sendMessage: (message: WSMessage) => void;
+interface UseWebSocketReturn<TMessage> {
+  sendMessage: (message: TMessage) => void;
   isConnected: boolean;
   isConnecting: boolean;
   error: string | null;
 }
 
-export function useWebSocket({
+export function useWebSocket<TMessage = WSMessage>({
   url,
   token,
   onMessage,
   onOpen,
   onClose,
   onError,
-}: UseWebSocketOptions): UseWebSocketReturn {
+}: UseWebSocketOptions<TMessage>): UseWebSocketReturn<TMessage> {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,14 +32,14 @@ export function useWebSocket({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = useCallback(() => {
-    if (!token || wsRef.current?.readyState === WebSocket.OPEN) {
+    if (!url || wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
 
     setIsConnecting(true);
     setError(null);
 
-    const wsUrl = `${url}?token=${encodeURIComponent(token)}`;
+    const wsUrl = token ? `${url}?token=${encodeURIComponent(token)}` : url;
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
@@ -51,7 +51,7 @@ export function useWebSocket({
 
     ws.onmessage = (event) => {
       try {
-        const message = JSON.parse(event.data) as WSMessage;
+        const message = JSON.parse(event.data) as TMessage;
         onMessage?.(message);
       } catch {
         console.error('Failed to parse WebSocket message:', event.data);
@@ -78,7 +78,7 @@ export function useWebSocket({
     wsRef.current = ws;
   }, [url, token, onMessage, onOpen, onClose, onError]);
 
-  const sendMessage = useCallback((message: WSMessage) => {
+  const sendMessage = useCallback((message: TMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     } else {
@@ -87,9 +87,7 @@ export function useWebSocket({
   }, []);
 
   useEffect(() => {
-    if (token) {
-      connect();
-    }
+    connect();
 
     return () => {
       if (reconnectTimeoutRef.current) {
@@ -99,7 +97,7 @@ export function useWebSocket({
         wsRef.current.close();
       }
     };
-  }, [token, connect]);
+  }, [connect]);
 
   return {
     sendMessage,

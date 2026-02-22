@@ -6,12 +6,12 @@ import { LLMProvider } from '@blueprintdata/models';
  */
 export class MockLLMClient extends LLMClient {
   private responses: Map<string, string> = new Map();
-  private callHistory: Array<{ messages: any[]; options?: GenerateOptions }> = [];
+  private callHistory: Array<{ prompt: string; options?: GenerateOptions }> = [];
   private shouldFail = false;
   private failureError: Error | null = null;
   private tokenCounts: { input: number; output: number } = { input: 0, output: 0 };
 
-  constructor(provider: LLMProvider = 'anthropic', model: string = 'test-model') {
+  constructor(provider: LLMProvider = 'openrouter' as LLMProvider, model: string = 'test-model') {
     super(provider, 'test-api-key', model);
   }
 
@@ -65,7 +65,7 @@ export class MockLLMClient extends LLMClient {
    * Get call history for assertions
    */
   getCallHistory(): Array<{ messages: any[]; options?: GenerateOptions }> {
-    return this.callHistory;
+    return this.callHistory as unknown as Array<{ messages: any[]; options?: GenerateOptions }>;
   }
 
   /**
@@ -79,7 +79,9 @@ export class MockLLMClient extends LLMClient {
    * Get the last call made to the client
    */
   getLastCall(): { messages: any[]; options?: GenerateOptions } | undefined {
-    return this.callHistory[this.callHistory.length - 1];
+    return this.callHistory[this.callHistory.length - 1] as unknown as
+      | { messages: any[]; options?: GenerateOptions }
+      | undefined;
   }
 
   /**
@@ -103,50 +105,37 @@ export class MockLLMClient extends LLMClient {
   /**
    * Mock implementation of generate
    */
-  async generate(messages: any[], options?: GenerateOptions): Promise<string> {
-    this.callHistory.push({ messages, options });
+  async generate(prompt: string, options?: GenerateOptions): Promise<GenerateResult> {
+    this.callHistory.push({ prompt, options });
 
     if (this.shouldFail) {
       throw this.failureError || new Error('Mock LLM client error');
     }
 
-    const userMessage = messages.find((m) => m.role === 'user')?.content || '';
+    const userMessage = prompt || '';
 
     for (const [pattern, response] of this.responses.entries()) {
       if (pattern === '__default__') continue;
       if (userMessage.includes(pattern)) {
-        return response;
+        return {
+          content: response,
+          tokensUsed: this.tokenCounts,
+        };
       }
     }
 
     const defaultResponse = this.responses.get('__default__');
     if (defaultResponse) {
-      return defaultResponse;
+      return {
+        content: defaultResponse,
+        tokensUsed: this.tokenCounts,
+      };
     }
 
-    return `Mock response for: ${userMessage.substring(0, 50)}...`;
-  }
-
-  /**
-   * Mock implementation of generateWithTokens
-   */
-  async generateWithTokens(
-    messages: any[],
-    options?: GenerateOptions
-  ): Promise<GenerateResult> {
-    const content = await this.generate(messages, options);
-
     return {
-      content,
+      content: `Mock response for: ${userMessage.substring(0, 50)}...`,
       tokensUsed: this.tokenCounts,
     };
-  }
-
-  /**
-   * Mock implementation of chat (legacy)
-   */
-  async chat(messages: any[]): Promise<string> {
-    return this.generate(messages);
   }
 }
 
@@ -159,7 +148,7 @@ export function createMockLLMClient(overrides?: {
   defaultResponse?: string;
 }): MockLLMClient {
   const client = new MockLLMClient(
-    overrides?.provider || 'anthropic',
+    overrides?.provider || ('openrouter' as LLMProvider),
     overrides?.model || 'test-model'
   );
 

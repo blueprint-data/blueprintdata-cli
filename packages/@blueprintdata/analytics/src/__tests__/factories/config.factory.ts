@@ -13,10 +13,10 @@ export function createMockConfigV2(overrides?: Partial<AnalyticsConfigV2>): Anal
       dbtTarget: undefined,
     },
     llm: {
-      provider: 'anthropic',
+      provider: 'openrouter' as LLMProvider,
       apiKey: 'test-api-key',
-      chatModel: 'claude-sonnet-4-5',
-      profilingModel: 'claude-haiku-4-5',
+      chatModel: 'openrouter/auto',
+      profilingModel: 'google/gemini-2.5-flash',
     },
     warehouse: {
       type: 'postgres',
@@ -55,10 +55,10 @@ export function createMockConfigV1(overrides?: Partial<AnalyticsConfig>): Analyt
     projectPath: '/test/project',
     dbtProfilesPath: '~/.dbt/profiles.yml',
     dbtTarget: undefined,
-    llmProvider: 'anthropic' as LLMProvider,
+    llmProvider: 'openrouter' as LLMProvider,
     llmApiKey: 'test-api-key',
-    llmModel: 'claude-sonnet-4-5',
-    llmProfilingModel: 'claude-haiku-4-5',
+    llmModel: 'openrouter/auto',
+    llmProfilingModel: 'google/gemini-2.5-flash',
     warehouseType: 'postgres',
     warehouseConnection: {
       type: 'postgres',
@@ -103,18 +103,18 @@ export function createMockConfigWithBigQuery(
 }
 
 /**
- * Create a mock configuration with OpenAI LLM
+ * Create a mock configuration with OpenRouter LLM
  */
-export function createMockConfigWithOpenAI(
+export function createMockConfigWithOpenRouter(
   overrides?: Partial<AnalyticsConfigV2>
 ): AnalyticsConfigV2 {
   return createMockConfigV2({
     ...overrides,
     llm: {
-      provider: 'openai',
-      apiKey: 'test-openai-key',
-      chatModel: 'gpt-5.2',
-      profilingModel: 'gpt-5-mini',
+      provider: 'openrouter' as LLMProvider,
+      apiKey: 'test-openrouter-key',
+      chatModel: 'openrouter/auto',
+      profilingModel: 'google/gemini-2.5-flash',
     },
   });
 }

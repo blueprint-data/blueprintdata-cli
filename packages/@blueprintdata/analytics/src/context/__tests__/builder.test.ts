@@ -3,6 +3,7 @@ import { ContextBuilder } from '../builder.js';
 import { TestDbtProject } from '../../__tests__/helpers/test-project.js';
 import { MockWarehouseConnector } from '../../__mocks__/warehouse/MockWarehouseConnector.js';
 import { createMockConfigV1 } from '../../__tests__/factories/config.factory.js';
+import type { LLMProvider } from '@blueprintdata/models';
 import fs from 'fs-extra';
 import path from 'path';
 
@@ -354,7 +355,7 @@ describe('ContextBuilder', () => {
     it('should include project metadata', async () => {
       const config = createMockConfigV1({
         projectPath: testProject.path,
-        llmProvider: 'anthropic',
+        llmProvider: 'openrouter' as LLMProvider,
         warehouseType: 'postgres',
       });
       const builder = new ContextBuilder({
@@ -367,7 +368,7 @@ describe('ContextBuilder', () => {
 
       const summaryPath = path.join(testProject.path, 'agent-context', 'summary.md');
       const content = await fs.readFile(summaryPath, 'utf-8');
-      expect(content).toContain('anthropic');
+      expect(content).toContain('openrouter');
       expect(content).toContain('postgres');
     });
 

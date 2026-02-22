@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { loadConfigV2, saveConfig } from '../../utils/config.js';
 import { TestDbtProject } from '../helpers/test-project.js';
 import { createMockConfigV1 } from '../factories/config.factory.js';
+import type { LLMProvider } from '@blueprintdata/models';
 
 describe('Config Migration Integration', () => {
   let testProject: TestDbtProject;
@@ -17,8 +18,8 @@ describe('Config Migration Integration', () => {
   it('should auto-migrate V1 config to V2 when loading', async () => {
     const v1Config = createMockConfigV1({
       projectPath: testProject.path,
-      llmProvider: 'anthropic',
-      llmModel: 'claude-sonnet-4-5',
+      llmProvider: 'openrouter' as LLMProvider,
+      llmModel: 'openrouter/auto',
       warehouseType: 'postgres',
       companyContext: {
         name: 'Test Company',
@@ -32,8 +33,8 @@ describe('Config Migration Integration', () => {
 
     expect(loadedConfig.version).toBe(2);
     expect(loadedConfig.project.projectPath).toBe(testProject.path);
-    expect(loadedConfig.llm.provider).toBe('anthropic');
-    expect(loadedConfig.llm.chatModel).toBe('claude-sonnet-4-5');
+    expect(loadedConfig.llm.provider).toBe('openrouter' as LLMProvider);
+    expect(loadedConfig.llm.chatModel).toBe('openrouter/auto');
     expect(loadedConfig.warehouse.type).toBe('postgres');
     expect(loadedConfig.company?.context.name).toBe('Test Company');
   });
@@ -55,9 +56,9 @@ describe('Config Migration Integration', () => {
     const v1Config = createMockConfigV1({
       projectPath: testProject.path,
       dbtTarget: 'production',
-      llmProvider: 'openai',
-      llmModel: 'gpt-5.2',
-      llmProfilingModel: 'gpt-5-mini',
+      llmProvider: 'openrouter' as LLMProvider,
+      llmModel: 'openrouter/auto',
+      llmProfilingModel: 'google/gemini-2.5-flash',
       warehouseType: 'bigquery',
       companyContext: {
         name: 'Custom Company',
@@ -76,9 +77,9 @@ describe('Config Migration Integration', () => {
     const loadedConfig = await loadConfigV2(testProject.path);
 
     expect(loadedConfig.project.dbtTarget).toBe('production');
-    expect(loadedConfig.llm.provider).toBe('openai');
-    expect(loadedConfig.llm.chatModel).toBe('gpt-5.2');
-    expect(loadedConfig.llm.profilingModel).toBe('gpt-5-mini');
+    expect(loadedConfig.llm.provider).toBe('openrouter' as LLMProvider);
+    expect(loadedConfig.llm.chatModel).toBe('openrouter/auto');
+    expect(loadedConfig.llm.profilingModel).toBe('google/gemini-2.5-flash');
     expect(loadedConfig.warehouse.type).toBe('bigquery');
     expect(loadedConfig.company?.context.name).toBe('Custom Company');
     expect(loadedConfig.company?.context.userContext).toBe('Custom description');

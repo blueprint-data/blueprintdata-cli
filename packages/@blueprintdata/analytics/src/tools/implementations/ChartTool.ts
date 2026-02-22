@@ -37,6 +37,37 @@ export const generateChartTool: Tool = {
         required: false,
       },
       {
+        name: 'seriesKey',
+        type: 'string',
+        description: 'Field name to split multiple series (line/bar charts)',
+        required: false,
+      },
+      {
+        name: 'stacked',
+        type: 'boolean',
+        description: 'Stack series for bar/line charts when seriesKey is set',
+        required: false,
+      },
+      {
+        name: 'topNSeries',
+        type: 'number',
+        description: 'Keep only the top N series by total value (seriesKey required)',
+        required: false,
+      },
+      {
+        name: 'fillMissing',
+        type: 'boolean',
+        description: 'Fill missing series values with 0 (seriesKey required)',
+        required: false,
+      },
+      {
+        name: 'xAxisOrder',
+        type: 'string',
+        description: 'Order for X-axis: asc, desc, or input (line/bar charts)',
+        required: false,
+        enum: ['asc', 'desc', 'input'],
+      },
+      {
         name: 'labelField',
         type: 'string',
         description: 'Field name for labels (pie charts)',
@@ -61,18 +92,19 @@ export const generateChartTool: Tool = {
     }
 
     // Generate Chart.js configuration
+    const options: Record<string, unknown> = {
+      responsive: true,
+      plugins: {
+        title: {
+          display: !!title,
+          text: title,
+        },
+      },
+    };
     const config: Record<string, unknown> = {
       type,
       data: {},
-      options: {
-        responsive: true,
-        plugins: {
-          title: {
-            display: !!title,
-            text: title,
-          },
-        },
-      },
+      options,
     };
 
     if (type === 'pie') {
@@ -92,19 +124,48 @@ export const generateChartTool: Tool = {
       // Line or bar chart
       const xAxis = (args.xAxis as string) || Object.keys(data[0])[0];
       const yAxis = (args.yAxis as string) || Object.keys(data[0])[1];
+      const seriesKey = args.seriesKey as string | undefined;
+      const stacked = Boolean(args.stacked);
+      const topNSeries = typeof args.topNSeries === 'number' ? args.topNSeries : undefined;
+      const fillMissing = Boolean(args.fillMissing);
+      const xAxisOrder = (args.xAxisOrder as string) || 'input';
 
-      config.data = {
-        labels: data.map((d) => String(d[xAxis])),
-        datasets: [
-          {
-            label: yAxis,
-            data: data.map((d) => Number(d[yAxis]) || 0),
-            backgroundColor: type === 'bar' ? 'rgba(54, 162, 235, 0.5)' : undefined,
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 2,
-          },
-        ],
-      };
+      if (seriesKey) {
+        const { labels, datasets } = buildSeriesDatasets({
+          data,
+          xAxis,
+          yAxis,
+          seriesKey,
+          topNSeries,
+          fillMissing,
+          xAxisOrder,
+          type,
+        });
+        config.data = { labels, datasets };
+        if (stacked) {
+          const currentOptions = (config.options || {}) as Record<string, unknown>;
+          config.options = {
+            ...currentOptions,
+            scales: {
+              x: { stacked: true },
+              y: { stacked: true },
+            },
+          };
+        }
+      } else {
+        config.data = {
+          labels: data.map((d) => String(d[xAxis])),
+          datasets: [
+            {
+              label: yAxis,
+              data: data.map((d) => normalizeNumber(d[yAxis])),
+              backgroundColor: type === 'bar' ? 'rgba(54, 162, 235, 0.5)' : undefined,
+              borderColor: 'rgba(54, 162, 235, 1)',
+              borderWidth: 2,
+            },
+          ],
+        };
+      }
     }
 
     return {
@@ -126,4 +187,79 @@ function generateColors(count: number): string[] {
   ];
 
   return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
+}
+
+function normalizeNumber(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildSeriesDatasets(params: {
+  data: Record<string, unknown>[];
+  xAxis: string;
+  yAxis: string;
+  seriesKey: string;
+  topNSeries?: number;
+  fillMissing: boolean;
+  xAxisOrder: string;
+  type: string;
+}): { labels: string[]; datasets: Array<Record<string, unknown>> } {
+  const { data, xAxis, yAxis, seriesKey, topNSeries, fillMissing, xAxisOrder, type } = params;
+  const seriesMap = new Map<string, Map<string, number>>();
+  const seriesTotals = new Map<string, number>();
+  const xAxisValues: string[] = [];
+  const xAxisSeen = new Set<string>();
+
+  for (const row of data) {
+    const xValue = String(row[xAxis]);
+    const seriesValue = String(row[seriesKey]);
+    const yValue = normalizeNumber(row[yAxis]);
+
+    if (!xAxisSeen.has(xValue)) {
+      xAxisSeen.add(xValue);
+      xAxisValues.push(xValue);
+    }
+
+    const seriesEntries = seriesMap.get(seriesValue) || new Map<string, number>();
+    seriesEntries.set(xValue, (seriesEntries.get(xValue) || 0) + yValue);
+    seriesMap.set(seriesValue, seriesEntries);
+    seriesTotals.set(seriesValue, (seriesTotals.get(seriesValue) || 0) + yValue);
+  }
+
+  let labels = [...xAxisValues];
+  if (xAxisOrder === 'asc') {
+    labels.sort((a, b) => a.localeCompare(b));
+  } else if (xAxisOrder === 'desc') {
+    labels.sort((a, b) => b.localeCompare(a));
+  }
+
+  let seriesKeys = Array.from(seriesMap.keys());
+  if (topNSeries && topNSeries > 0) {
+    seriesKeys = seriesKeys
+      .sort((a, b) => (seriesTotals.get(b) || 0) - (seriesTotals.get(a) || 0))
+      .slice(0, topNSeries);
+  }
+
+  const colors = generateColors(seriesKeys.length);
+  const datasets = seriesKeys.map((seriesValue, index) => {
+    const seriesEntries = seriesMap.get(seriesValue) || new Map<string, number>();
+    const seriesData = labels.map((label) => {
+      if (seriesEntries.has(label)) {
+        return seriesEntries.get(label) || 0;
+      }
+      return fillMissing ? 0 : null;
+    });
+    const color = colors[index];
+
+    return {
+      label: seriesValue,
+      data: seriesData,
+      backgroundColor: type === 'bar' ? color : undefined,
+      borderColor: color.replace('0.7', '1'),
+      borderWidth: 2,
+      fill: false,
+    } as Record<string, unknown>;
+  });
+
+  return { labels, datasets };
 }

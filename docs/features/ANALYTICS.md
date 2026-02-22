@@ -29,7 +29,7 @@ The Analytics feature transforms your dbt project into an intelligent analytics 
 - **Business Context**: Learns your company's domain and terminology
 - **Intelligent Chat**: Natural language queries with SQL generation
 - **Tool Execution**: Query warehouse, search context, generate charts
-- **LLM-Powered**: Supports Claude (Anthropic) and GPT (OpenAI)
+- **LLM-Powered**: Powered by OpenRouter with a broad model catalog
 
 ### Commands
 
@@ -55,7 +55,7 @@ Before running `analytics init`, ensure you have:
 - A working dbt project with `dbt_project.yml`
 - Configured dbt profiles in `~/.dbt/profiles.yml`
 - Valid warehouse credentials (BigQuery or Postgres)
-- An API key for Anthropic Claude or OpenAI GPT
+- An API key for OpenRouter
 
 ### Quick Start
 
@@ -81,6 +81,7 @@ Validates that you're in a valid dbt project directory.
 Reads your dbt profile configuration and tests the warehouse connection.
 
 **Supported warehouses:**
+
 - **BigQuery**: Google Cloud BigQuery
 - **Postgres**: PostgreSQL
 
@@ -91,57 +92,48 @@ Reads your dbt profile configuration and tests the warehouse connection.
 
 #### 3. LLM Provider Selection
 
-Choose between Anthropic Claude and OpenAI GPT.
+OpenRouter is the default and only LLM provider.
 
-The CLI detects API keys in your environment:
-- `ANTHROPIC_API_KEY`
-- `OPENAI_API_KEY`
+The CLI detects the API key in your environment:
 
-**Example prompt:**
-```
-? Select LLM provider:
-  ● Anthropic Claude (detected in environment)
-  ○ OpenAI GPT
-```
+- `OPENROUTER_API_KEY`
 
-If no keys detected, you'll be prompted to enter one.
+If no key is detected, you'll be prompted to enter one.
 
 #### 4. LLM Model Selection
 
 Select two models for different purposes:
 
 **Chat Model** (for interactive conversations):
-- **Claude Options**:
-  - `claude-3-5-sonnet-20241022` (Recommended) - Best for analysis
-  - `claude-3-5-haiku-20241022` - Fast and cost-effective
-  - `claude-3-opus-20240229` - Highest quality
 
-- **GPT Options**:
-  - `gpt-4o` (Recommended) - Latest, multimodal
-  - `gpt-4o-mini` - Fast and cost-effective
-  - `gpt-4-turbo` - Previous generation
+- Recommended: `openrouter/auto` or top-ranked models from OpenRouter
 
 **Profiling Model** (for generating documentation):
-- Recommended: Cost-effective models (Haiku, GPT-4o-mini)
-- Used for profiling many tables, so cost matters
+
+- Recommended: fast/cost-effective models like `google/gemini-2.5-flash`
+
+You can search the full OpenRouter model catalog or enter a model ID manually.
 
 #### 5. Company Context Collection
 
 Provide information about your company to help the agent understand your business domain.
 
 **Company Name** (optional):
+
 ```
 ? Company name (optional):
   Acme Corp
 ```
 
 **Industry** (optional):
+
 ```
 ? Industry (optional):
   E-commerce
 ```
 
 **Website Scraping** (optional):
+
 ```
 ? Provide website URLs to scrape for company context? (Y/n)
   Yes
@@ -153,12 +145,14 @@ Provide information about your company to help the agent understand your busines
 ```
 
 The scraper extracts text to learn about:
+
 - Company mission and values
 - Product offerings
 - Business model
 - Industry terminology
 
 **Additional Context** (optional):
+
 ```
 ? Additional company context (optional):
   We track key metrics like CAC, LTV, churn rate, and MRR.
@@ -168,6 +162,7 @@ The scraper extracts text to learn about:
 **dbt Terminology Extraction**:
 
 The CLI automatically scans your dbt project to extract:
+
 - Business terms from model names
 - Domain areas (finance, marketing, product, etc.)
 - Common metrics referenced in models
@@ -181,12 +176,14 @@ The CLI automatically scans your dbt project to extract:
 Choose which dbt models to profile during initialization.
 
 **Options:**
+
 - **All models** - Comprehensive but slower
 - **Select specific models** - Use dbt selection syntax
 - **Only marts layer** (Recommended) - Business-facing models only
 - **Only staging layer** - Raw data transformations
 
 **dbt Selection Syntax Examples:**
+
 ```
 marts.finance.*              # All models in marts/finance
 tag:core                     # All models with "core" tag
@@ -216,10 +213,10 @@ Configure a Slack bot for team collaboration (future feature).
     "dbtProfilesPath": "/Users/you/.dbt/profiles.yml"
   },
   "llm": {
-    "provider": "anthropic",
-    "apiKey": "sk-ant-...",
-    "chatModel": "claude-3-5-sonnet-20241022",
-    "profilingModel": "claude-3-5-haiku-20241022"
+    "provider": "openrouter",
+    "apiKey": "or-...",
+    "chatModel": "openrouter/auto",
+    "profilingModel": "google/gemini-2.5-flash"
   },
   "warehouse": {
     "type": "bigquery",
@@ -272,6 +269,7 @@ blueprintdata analytics init --force
 ```
 
 This will:
+
 - Prompt for new configuration
 - Overwrite `.blueprintdata/config.json`
 - Regenerate `agent-context/` directory
@@ -309,12 +307,14 @@ Defines the agent's role, capabilities, and behavior:
 Project overview with business context:
 
 **Without LLM enrichment** (basic template):
+
 - Project name and description
 - Warehouse type
 - dbt project structure
 - Key metrics
 
 **With LLM enrichment**:
+
 - Business-specific project description
 - Alignment with company goals
 - Key insights about data model
@@ -325,22 +325,25 @@ Project overview with business context:
 dbt model catalog with lineage information:
 
 **Without LLM enrichment**:
+
 - List of models grouped by layer
 - Model dependencies (refs, sources)
 - Materialization strategies
 - Tags and meta information
 
 **With LLM enrichment**:
+
 - Analysis of dbt layering strategy
 - Identification of key business entities
 - Documentation of data flow patterns
 - Recommendations for improvements
 
-### models/*.md
+### models/\*.md
 
 Individual table/model profiles with:
 
 **Basic Profile**:
+
 - Table name and schema
 - Column names and types
 - Row count
@@ -348,6 +351,7 @@ Individual table/model profiles with:
 - Sample values
 
 **LLM-Enriched Profile** (future):
+
 - Business-oriented column descriptions
 - Data quality insights
 - Common query patterns
@@ -358,17 +362,20 @@ Individual table/model profiles with:
 When LLM profiling model is configured and company context is provided, the agent uses AI to generate richer, more business-focused documentation.
 
 **Benefits**:
+
 - Context-aware descriptions
 - Business terminology instead of technical jargon
 - Insights and recommendations
 - Better understanding for non-technical users
 
 **Cost Considerations**:
+
 - **Project summary**: ~500-1,000 tokens (~$0.01 with Haiku)
 - **Modeling analysis**: ~1,000-3,000 tokens (~$0.02 with Haiku)
 - **Table profiling** (future): ~500 tokens per table
 
 For a typical project with 50 models:
+
 - **Claude Haiku**: ~$0.10-0.50
 - **GPT-4o Mini**: ~$0.02-0.10
 
@@ -385,6 +392,7 @@ blueprintdata analytics sync
 ```
 
 This will:
+
 1. Load configuration
 2. Scan dbt models for changes
 3. Profile modified tables
@@ -405,21 +413,25 @@ Options:
 ### Examples
 
 **Sync specific models:**
+
 ```bash
 blueprintdata analytics sync --select marts.finance.*
 ```
 
 **Full re-sync:**
+
 ```bash
 blueprintdata analytics sync --force
 ```
 
 **Profile tables only:**
+
 ```bash
 blueprintdata analytics sync --profiles-only
 ```
 
 **Use specific dbt target:**
+
 ```bash
 blueprintdata analytics sync --target prod
 ```
@@ -523,6 +535,7 @@ blueprintdata analytics chat
 ```
 
 This will:
+
 1. Load configuration
 2. Check authentication
 3. Initialize database
@@ -543,12 +556,14 @@ The agent has access to specialized tools for interacting with your data and con
 Execute read-only SQL queries against your data warehouse.
 
 **Capabilities**:
+
 - Run SELECT queries
 - 30-second timeout
 - 1000 row limit
 - SQL injection protection
 
 **Example:**
+
 ```sql
 SELECT date, SUM(revenue) as revenue
 FROM fct_orders
@@ -558,57 +573,85 @@ ORDER BY date
 ```
 
 **Safety Features**:
+
 - Blocks INSERT, UPDATE, DELETE, DROP, CREATE
 - Read-only queries only
 - Parameter validation
 - Error handling
 
-#### 2. search_context
+#### 2. list_context_docs
 
-Search agent-context files for relevant information.
+List markdown files available under the agent-context directory.
 
 **Capabilities**:
-- Fuzzy search across all markdown files
-- Searches system_prompt, summary, modelling, model profiles
-- Returns relevant excerpts
+
+- Recursive listing of `.md` files
+- Optional subdirectory scoping
+- Limits to prevent huge responses
 
 **Example:**
+
 ```
-Query: "customer lifetime value"
-Results: Excerpts from dim_customers.md and fct_orders.md mentioning LTV
+subdir: "models"
+files: ["models/dim_customers.md", "models/fct_orders.md", ...]
 ```
 
 **Use Cases**:
-- Find model definitions
-- Look up business terminology
-- Discover relevant tables
-- Understand relationships
 
-#### 3. generate_chart
+- Discover available context files
+- Navigate model documentation
+
+#### 3. read_context_doc
+
+Read a specific markdown file from agent-context.
+
+**Capabilities**:
+
+- Reads `.md` content
+- Truncates long files
+- Path safety checks
+
+**Example:**
+
+```
+path: "models/dim_customers.md"
+```
+
+**Use Cases**:
+
+- Inspect model documentation
+- Review summaries and profiles
+
+#### 4. generate_chart
 
 Generate Chart.js configurations for data visualizations.
 
 **Capabilities**:
+
 - Line charts (time series)
 - Bar charts (comparisons)
 - Pie charts (proportions)
 - Customizable colors and labels
 
 **Example:**
+
 ```json
 {
   "type": "line",
   "data": {
     "labels": ["Jan", "Feb", "Mar"],
-    "datasets": [{
-      "label": "Revenue",
-      "data": [100, 150, 200]
-    }]
+    "datasets": [
+      {
+        "label": "Revenue",
+        "data": [100, 150, 200]
+      }
+    ]
   }
 }
 ```
 
 **Use Cases**:
+
 - Visualize query results
 - Show trends over time
 - Compare categories
@@ -627,9 +670,9 @@ Agent (LLM) decides which tool to use
     │   ├─→ Execute query
     │   └─→ Return results
     │
-    ├─→ search_context
-    │   ├─→ Search markdown files
-    │   └─→ Return excerpts
+    ├─→ list_context_docs / read_context_doc
+    │   ├─→ List docs / read markdown
+    │   └─→ Return context
     │
     └─→ generate_chart
         ├─→ Create Chart.js config
@@ -654,61 +697,29 @@ The agent uses Large Language Models (LLMs) to understand natural language and g
 
 ### Supported Providers
 
-#### Anthropic Claude
+OpenRouter is the default and only provider. It gives access to 300+ models across vendors.
 
-**Models**:
-- **claude-3-5-sonnet-20241022** (Recommended for chat)
-  - Context: 200K tokens
-  - Best balance of speed, cost, and quality
-  - Strong at analysis and reasoning
+**Recommended Models**:
 
-- **claude-3-5-haiku-20241022** (Recommended for profiling)
-  - Context: 200K tokens
+- **openrouter/auto** (Recommended for chat)
+  - Automatically routes to a strong model
+  - Balanced quality and cost
+
+- **google/gemini-2.5-flash** (Recommended for profiling)
   - Fast and cost-effective
-  - Great for documentation generation
-
-- **claude-3-opus-20240229**
-  - Context: 200K tokens
-  - Highest quality
-  - Slower and more expensive
-
-**Pricing** (as of 2024):
-- Sonnet: $3/$15 per 1M tokens (input/output)
-- Haiku: $1/$5 per 1M tokens
-- Opus: $15/$75 per 1M tokens
-
-#### OpenAI GPT
-
-**Models**:
-- **gpt-4o** (Recommended for chat)
-  - Context: 128K tokens
-  - Latest model
-  - Multimodal capabilities
-
-- **gpt-4o-mini** (Recommended for profiling)
-  - Context: 128K tokens
-  - Fast and cost-effective
-  - Good quality
-
-- **gpt-4-turbo**
-  - Context: 128K tokens
-  - Previous generation
-  - Still very capable
-
-**Pricing** (as of 2024):
-- GPT-4o: $2.50/$10 per 1M tokens
-- GPT-4o-mini: $0.15/$0.60 per 1M tokens
-- GPT-4-turbo: $10/$30 per 1M tokens
+  - Good for large batch documentation
 
 ### Model Selection Strategy
 
 **For Chat** (interactive conversations):
-- Choose more capable models (Sonnet, GPT-4o)
+
+- Choose more capable models (OpenRouter auto, top-ranked models)
 - Quality and reasoning matter most
 - Cost per query is reasonable
 
 **For Profiling** (batch documentation):
-- Choose cost-effective models (Haiku, GPT-4o-mini)
+
+- Choose cost-effective models (fast/flash or free tiers)
 - Running on many tables
 - Good quality at lower cost
 
@@ -717,11 +728,8 @@ The agent uses Large Language Models (LLMs) to understand natural language and g
 Set API keys via environment variables:
 
 ```bash
-# Anthropic
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# OpenAI
-export OPENAI_API_KEY=sk-...
+# OpenRouter
+export OPENROUTER_API_KEY=or-...
 ```
 
 Or store in `.blueprintdata/config.json` (added to `.gitignore`).
@@ -787,6 +795,7 @@ If context exceeds limits, older messages are summarized or removed.
 **Symptoms**: CLI says dbt project not found
 
 **Solutions**:
+
 - Ensure you're in a directory with `dbt_project.yml`
 - Check that `dbt_project.yml` is valid YAML
 - Run `dbt debug` to verify project
@@ -796,6 +805,7 @@ If context exceeds limits, older messages are summarized or removed.
 **Symptoms**: Warehouse connection test fails
 
 **Solutions**:
+
 - Verify `~/.dbt/profiles.yml` exists and is valid
 - Test connection with `dbt debug`
 - **For BigQuery**: Ensure `gcloud auth` is authenticated
@@ -806,6 +816,7 @@ If context exceeds limits, older messages are summarized or removed.
 **Symptoms**: Can't read dbt profiles
 
 **Solutions**:
+
 - Check that profile name in `dbt_project.yml` matches `profiles.yml`
 - Ensure target environment is configured
 - Verify file permissions on `profiles.yml`
@@ -815,6 +826,7 @@ If context exceeds limits, older messages are summarized or removed.
 **Symptoms**: API calls failing during init
 
 **Solutions**:
+
 - Verify API key is valid and has credits/quota
 - Check network connectivity
 - The command will fall back to basic templates if LLM fails
@@ -824,6 +836,7 @@ If context exceeds limits, older messages are summarized or removed.
 **Symptoms**: Can't query warehouse tables
 
 **Solutions**:
+
 - Ensure warehouse credentials have read access
 - Check that dataset/schema exists
 - Verify table permissions
@@ -835,6 +848,7 @@ If context exceeds limits, older messages are summarized or removed.
 **Symptoms**: Sync doesn't profile updated models
 
 **Solutions**:
+
 - Use `--force` to re-profile all tables
 - Check that model selection is correct
 - Verify dbt project hasn't moved
@@ -844,6 +858,7 @@ If context exceeds limits, older messages are summarized or removed.
 **Symptoms**: Takes a long time to complete
 
 **Solutions**:
+
 - Use `--select` to target specific models
 - Profile only marts layer (not staging)
 - Disable LLM enrichment temporarily (edit config)
@@ -853,6 +868,7 @@ If context exceeds limits, older messages are summarized or removed.
 **Symptoms**: Can't find `agent-context/` directory
 
 **Solutions**:
+
 - Run `analytics init` first
 - Check you're in the right directory
 - Verify `.blueprintdata/config.json` exists
@@ -864,6 +880,7 @@ If context exceeds limits, older messages are summarized or removed.
 **Symptoms**: CLI says no analytics config
 
 **Solutions**:
+
 - Run `analytics init` first
 - Check `.blueprintdata/config.json` exists
 - Verify you're in the dbt project root
@@ -873,6 +890,7 @@ If context exceeds limits, older messages are summarized or removed.
 **Symptoms**: Config version mismatch
 
 **Solutions**:
+
 - CLI automatically migrates V1 → V2
 - If migration fails, backup and re-run `init --force`
 
@@ -887,15 +905,15 @@ If context exceeds limits, older messages are summarized or removed.
 cd my-dbt-project
 
 # Set API key
-export ANTHROPIC_API_KEY=sk-ant-...
+export OPENROUTER_API_KEY=or-...
 
 # Initialize
 blueprintdata analytics init
 
 # Prompts:
-# - Provider: Anthropic
-# - Chat model: Claude Sonnet
-# - Profiling model: Claude Haiku
+# - Provider: OpenRouter
+# - Chat model: openrouter/auto
+# - Profiling model: google/gemini-2.5-flash
 # - Company: Acme Corp
 # - Industry: E-commerce
 # - Websites: https://acme.com/about
@@ -933,29 +951,32 @@ blueprintdata analytics sync --force
 
 **Typical dbt project (50 models, marts only)**:
 
-Using Claude Haiku for profiling:
+Using a fast OpenRouter model for profiling:
+
 - Project summary: ~$0.01
 - Modeling documentation: ~$0.02
 - Table profiling (25 marts): ~$0.10
 - **Total**: ~$0.13
 
-Using GPT-4o-mini for profiling:
+Using a free/low-cost OpenRouter model for profiling:
+
 - **Total**: ~$0.03
 
 ### Sync Costs
 
 **Incremental sync (5 modified models)**:
-- Claude Haiku: ~$0.02
-- GPT-4o-mini: ~$0.005
+
+- Fast OpenRouter model: ~$0.005-0.02
 
 **Full re-sync**:
+
 - Same as initialization
 
 ### Chat Costs (Future)
 
 **Per conversation (10-20 messages)**:
-- Claude Sonnet: ~$0.10-0.30
-- GPT-4o: ~$0.05-0.15
+
+- OpenRouter auto or top-tier models: ~$0.05-0.30
 
 ---
 
@@ -964,8 +985,7 @@ Using GPT-4o-mini for profiling:
 - [Architecture Guide](../ARCHITECTURE.md) - System architecture
 - [Templates Feature](TEMPLATES.md) - Project scaffolding
 - [Development Guide](../DEVELOPMENT.md) - Local development
-- [Anthropic Claude Documentation](https://docs.anthropic.com/)
-- [OpenAI GPT Documentation](https://platform.openai.com/docs/)
+- [OpenRouter Documentation](https://openrouter.ai/docs)
 - [dbt Documentation](https://docs.getdbt.com/)
 
 ---

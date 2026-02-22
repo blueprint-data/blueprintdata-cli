@@ -32,7 +32,7 @@ export type AgentRole = 'analytics-engineer' | 'data-analyst';
 
 export type InterfaceType = 'ui' | 'slack';
 
-export type LLMProvider = 'anthropic' | 'openai';
+export type LLMProvider = 'openrouter';
 
 export interface AnalyticsConfig {
   projectPath: string;

@@ -11,6 +11,7 @@ import {
   createMockConfigV1,
   createMockConfigV2,
 } from '../../__tests__/factories/config.factory.js';
+import type { LLMProvider } from '@blueprintdata/models';
 
 describe('Configuration Utils', () => {
   let testProject: TestDbtProject;
@@ -31,7 +32,7 @@ describe('Configuration Utils', () => {
       const loaded = await loadConfig(testProject.path);
 
       expect(loaded.projectPath).toBe(testProject.path);
-      expect(loaded.llmProvider).toBe('anthropic');
+      expect(loaded.llmProvider).toBe('openrouter' as LLMProvider);
       expect(loaded.warehouseType).toBe('postgres');
     });
 
@@ -57,7 +58,7 @@ describe('Configuration Utils', () => {
 
       const content = await testProject.readFile('.blueprintdata/config.json');
       const parsed = JSON.parse(content);
-      expect(parsed.llmProvider).toBe('anthropic');
+      expect(parsed.llmProvider).toBe('openrouter' as LLMProvider);
     });
 
     it('should create .blueprintdata directory if it does not exist', async () => {
@@ -81,7 +82,7 @@ describe('Configuration Utils', () => {
 
       expect(loaded.version).toBe(2);
       expect(loaded.project.projectPath).toBe(testProject.path);
-      expect(loaded.llm.provider).toBe('anthropic');
+      expect(loaded.llm.provider).toBe('openrouter' as LLMProvider);
       expect(loaded.warehouse.type).toBe('postgres');
     });
 
@@ -93,7 +94,7 @@ describe('Configuration Utils', () => {
 
       expect(loaded.version).toBe(2);
       expect(loaded.project.projectPath).toBe(testProject.path);
-      expect(loaded.llm.provider).toBe('anthropic');
+      expect(loaded.llm.provider).toBe('openrouter' as LLMProvider);
       expect(loaded.llm.chatModel).toBe(v1Config.llmModel);
       expect(loaded.warehouse.type).toBe('postgres');
     });
@@ -123,7 +124,7 @@ describe('Configuration Utils', () => {
       const content = await testProject.readFile('.blueprintdata/config.json');
       const parsed = JSON.parse(content);
       expect(parsed.version).toBe(2);
-      expect(parsed.llm.provider).toBe('anthropic');
+      expect(parsed.llm.provider).toBe('openrouter' as LLMProvider);
     });
 
     it('should preserve optional fields', async () => {

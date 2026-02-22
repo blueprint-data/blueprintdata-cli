@@ -443,46 +443,31 @@ test_project:
   });
 
   describe('validateLLMApiKey', () => {
-    it('should return Anthropic API key from environment', () => {
-      const originalKey = process.env.ANTHROPIC_API_KEY;
-      process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
+    it('should return OpenRouter API key from environment', () => {
+      const originalKey = process.env.OPENROUTER_API_KEY;
+      process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
 
-      const key = validateLLMApiKey('anthropic');
+      const key = validateLLMApiKey('openrouter');
 
-      expect(key).toBe('test-anthropic-key');
-
-      if (originalKey) {
-        process.env.ANTHROPIC_API_KEY = originalKey;
-      } else {
-        delete process.env.ANTHROPIC_API_KEY;
-      }
-    });
-
-    it('should return OpenAI API key from environment', () => {
-      const originalKey = process.env.OPENAI_API_KEY;
-      process.env.OPENAI_API_KEY = 'test-openai-key';
-
-      const key = validateLLMApiKey('openai');
-
-      expect(key).toBe('test-openai-key');
+      expect(key).toBe('test-openrouter-key');
 
       if (originalKey) {
-        process.env.OPENAI_API_KEY = originalKey;
+        process.env.OPENROUTER_API_KEY = originalKey;
       } else {
-        delete process.env.OPENAI_API_KEY;
+        delete process.env.OPENROUTER_API_KEY;
       }
     });
 
     it('should return undefined when API key not set', () => {
-      const originalKey = process.env.ANTHROPIC_API_KEY;
-      delete process.env.ANTHROPIC_API_KEY;
+      const originalKey = process.env.OPENROUTER_API_KEY;
+      delete process.env.OPENROUTER_API_KEY;
 
-      const key = validateLLMApiKey('anthropic');
+      const key = validateLLMApiKey('openrouter');
 
       expect(key).toBeUndefined();
 
       if (originalKey) {
-        process.env.ANTHROPIC_API_KEY = originalKey;
+        process.env.OPENROUTER_API_KEY = originalKey;
       }
     });
   });

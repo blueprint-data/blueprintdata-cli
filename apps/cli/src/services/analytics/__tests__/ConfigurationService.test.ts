@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { ConfigurationService } from '../ConfigurationService.js';
+import type { LLMProvider } from '@blueprintdata/models';
 import { TestDbtProject } from '../../../__tests__/helpers/test-project.js';
 
 describe('ConfigurationService', () => {
@@ -29,10 +30,10 @@ describe('ConfigurationService', () => {
       const options = {
         projectPath: testProject.path,
         dbtTarget: undefined,
-        llmProvider: 'anthropic' as const,
+        llmProvider: 'openrouter' as LLMProvider,
         llmApiKey: 'test-key',
-        llmModel: 'claude-sonnet-4-5',
-        llmProfilingModel: 'claude-haiku-4-5',
+        llmModel: 'openrouter/auto',
+        llmProfilingModel: 'google/gemini-2.5-flash',
         warehouseConnection: createWarehouseConnection(),
         companyContext: undefined,
         modelSelection: undefined,
@@ -45,7 +46,7 @@ describe('ConfigurationService', () => {
       const config = await service.buildAndSave(options);
 
       expect(config.projectPath).toBe(testProject.path);
-      expect(config.llmProvider).toBe('anthropic');
+      expect(config.llmProvider).toBe('openrouter' as LLMProvider);
       expect(config.warehouseType).toBe('postgres');
 
       const exists = await testProject.fileExists('.blueprintdata/config.json');
@@ -56,10 +57,10 @@ describe('ConfigurationService', () => {
       const options = {
         projectPath: testProject.path,
         dbtTarget: undefined,
-        llmProvider: 'anthropic' as const,
+        llmProvider: 'openrouter' as LLMProvider,
         llmApiKey: 'test-key',
-        llmModel: 'claude-sonnet-4-5',
-        llmProfilingModel: 'claude-haiku-4-5',
+        llmModel: 'openrouter/auto',
+        llmProfilingModel: 'google/gemini-2.5-flash',
         warehouseConnection: createWarehouseConnection(),
         companyContext: {
           name: 'Test Company',
@@ -84,10 +85,10 @@ describe('ConfigurationService', () => {
       const options = {
         projectPath: testProject.path,
         dbtTarget: undefined,
-        llmProvider: 'anthropic' as const,
+        llmProvider: 'openrouter' as LLMProvider,
         llmApiKey: 'test-key',
-        llmModel: 'claude-sonnet-4-5',
-        llmProfilingModel: 'claude-haiku-4-5',
+        llmModel: 'openrouter/auto',
+        llmProfilingModel: 'google/gemini-2.5-flash',
         warehouseConnection: createWarehouseConnection(),
         companyContext: undefined,
         modelSelection: undefined,
@@ -107,10 +108,10 @@ describe('ConfigurationService', () => {
       const options = {
         projectPath: testProject.path,
         dbtTarget: undefined,
-        llmProvider: 'anthropic' as const,
+        llmProvider: 'openrouter' as LLMProvider,
         llmApiKey: 'test-key',
-        llmModel: 'claude-sonnet-4-5',
-        llmProfilingModel: 'claude-haiku-4-5',
+        llmModel: 'openrouter/auto',
+        llmProfilingModel: 'google/gemini-2.5-flash',
         warehouseConnection: createWarehouseConnection(),
         companyContext: undefined,
         modelSelection: undefined,
@@ -124,14 +125,14 @@ describe('ConfigurationService', () => {
       expect(config.gatewayPort).toBe(8080);
     });
 
-    it('should handle OpenAI provider', async () => {
+    it('should handle OpenRouter provider', async () => {
       const options = {
         projectPath: testProject.path,
         dbtTarget: undefined,
-        llmProvider: 'openai' as const,
-        llmApiKey: 'sk-test-key',
-        llmModel: 'gpt-5.2',
-        llmProfilingModel: 'gpt-5-mini',
+        llmProvider: 'openrouter' as LLMProvider,
+        llmApiKey: 'or-test-key',
+        llmModel: 'openrouter/auto',
+        llmProfilingModel: 'google/gemini-2.5-flash',
         warehouseConnection: createWarehouseConnection(),
         companyContext: undefined,
         modelSelection: undefined,
@@ -143,19 +144,19 @@ describe('ConfigurationService', () => {
 
       const config = await service.buildAndSave(options);
 
-      expect(config.llmProvider).toBe('openai');
-      expect(config.llmModel).toBe('gpt-5.2');
-      expect(config.llmProfilingModel).toBe('gpt-5-mini');
+      expect(config.llmProvider).toBe('openrouter' as LLMProvider);
+      expect(config.llmModel).toBe('openrouter/auto');
+      expect(config.llmProfilingModel).toBe('google/gemini-2.5-flash');
     });
 
     it('should set dbt target when provided', async () => {
       const options = {
         projectPath: testProject.path,
         dbtTarget: 'production',
-        llmProvider: 'anthropic' as const,
+        llmProvider: 'openrouter' as LLMProvider,
         llmApiKey: 'test-key',
-        llmModel: 'claude-sonnet-4-5',
-        llmProfilingModel: 'claude-haiku-4-5',
+        llmModel: 'openrouter/auto',
+        llmProfilingModel: 'google/gemini-2.5-flash',
         warehouseConnection: createWarehouseConnection(),
         companyContext: undefined,
         modelSelection: undefined,

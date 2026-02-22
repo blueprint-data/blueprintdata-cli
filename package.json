@@ -10,8 +10,9 @@
   ],
   "scripts": {
     "build": "bun run build:packages && bun run build:apps",
+    "build:all": "bun run build:packages && bun run build:apps",
     "build:packages": "tsc --build tsconfig.json",
-    "build:apps": "bun run --filter './apps/**' build",
+    "build:apps": "bun run build:web && bun run build:cli",
     "build:cli": "bun run --filter 'blueprintdata-cli' build",
     "build:web": "bun run --filter '@blueprintdata/web' build",
     "dev": "bun run --filter './apps/**' dev",

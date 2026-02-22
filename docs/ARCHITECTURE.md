@@ -84,8 +84,8 @@ blueprintdata-cli/
 
 ### LLM Integration
 
-- **Providers**: Anthropic Claude + OpenAI GPT
-- **SDKs**: @anthropic-ai/sdk, openai
+- **Providers**: OpenRouter (multi-provider routing)
+- **SDKs**: @openrouter/sdk
 
 ### Development Tools
 
@@ -158,7 +158,7 @@ blueprintdata-cli/
 ┌──────────────────────────▼──────────────────────────────────┐
 │                  Infrastructure Layer                        │
 │  - Warehouse Connectors (BigQuery, Postgres)                 │
-│  - LLM Clients (Anthropic, OpenAI)                           │
+│  - LLM Clients (OpenRouter)                                  │
 │  - Database (Drizzle ORM)                                    │
 │  - File System Operations                                    │
 │  - Configuration Persistence                                 │
@@ -176,6 +176,7 @@ blueprintdata-cli/
 **Purpose**: Shared TypeScript types and interfaces
 
 **Key Exports**:
+
 - `StorageType`, `LLMProvider`, `WarehouseConnection`
 - Configuration interfaces (`AnalyticsConfig`, `ProjectConfig`, etc.)
 - Message types for WebSocket communication
@@ -187,6 +188,7 @@ blueprintdata-cli/
 **Purpose**: Error handling utilities and custom error types
 
 **Key Exports**:
+
 - Base error classes (`BlueprintError`, `ValidationError`, etc.)
 - Error utilities (`tryAsync`, `tryAsyncResult`)
 
@@ -197,6 +199,7 @@ blueprintdata-cli/
 **Purpose**: Configuration loading, validation, and migration
 
 **Key Features**:
+
 - V1 → V2 config migration
 - Environment variable support
 - Default value management
@@ -213,12 +216,14 @@ blueprintdata-cli/
 **Purpose**: SQLite database with Drizzle ORM
 
 **Schema**:
+
 - `users` - User accounts
 - `sessions` - Chat sessions
 - `messages` - Chat messages
 - `query_executions` - Query history
 
 **Key Features**:
+
 - Type-safe queries
 - Automatic migrations
 - Relation loading
@@ -231,17 +236,19 @@ blueprintdata-cli/
 **Purpose**: Data warehouse connectors
 
 **Supported Warehouses**:
+
 - **BigQuery**: Google Cloud BigQuery connector
 - **Postgres**: PostgreSQL connector
 
 **Base Interface**:
+
 ```typescript
 abstract class BaseWarehouseConnector {
-  abstract testConnection(): Promise<void>
-  abstract query(sql: string): Promise<QueryResult>
-  abstract getTableSchema(schema: string, table: string): Promise<TableSchema>
-  abstract listTables(schema: string): Promise<string[]>
-  abstract listSchemas(): Promise<string[]>
+  abstract testConnection(): Promise<void>;
+  abstract query(sql: string): Promise<QueryResult>;
+  abstract getTableSchema(schema: string, table: string): Promise<TableSchema>;
+  abstract listTables(schema: string): Promise<string[]>;
+  abstract listSchemas(): Promise<string[]>;
 }
 ```
 
@@ -252,11 +259,13 @@ abstract class BaseWarehouseConnector {
 **Purpose**: Authentication and authorization
 
 **Components**:
+
 - `PasswordHasher` - bcrypt password hashing (10 rounds)
 - `TokenManager` - JWT generation and validation (30-day expiry)
 - `AuthService` - User registration, login, logout
 
 **Key Features**:
+
 - Secure token storage (`~/.blueprintdata/auth.json`)
 - Password validation
 - Username validation
@@ -268,6 +277,7 @@ abstract class BaseWarehouseConnector {
 **Purpose**: WebSocket gateway server
 
 **Key Features**:
+
 - WebSocket protocol with typed messages
 - JWT authentication on connection
 - Client session management
@@ -275,6 +285,7 @@ abstract class BaseWarehouseConnector {
 - Message routing
 
 **Message Types**:
+
 - `chat` - User/assistant messages
 - `tool_call` - Tool execution requests
 - `tool_result` - Tool execution results
@@ -321,7 +332,7 @@ abstract class BaseWarehouseConnector {
    - Message processing and LLM interaction
    - Tool execution coordination
 
-**Dependencies**: Multiple (@blueprintdata/config, @blueprintdata/warehouse, @blueprintdata/models, @anthropic-ai/sdk, openai)
+**Dependencies**: Multiple (@blueprintdata/config, @blueprintdata/warehouse, @blueprintdata/models, @openrouter/sdk)
 
 ---
 
@@ -332,6 +343,7 @@ abstract class BaseWarehouseConnector {
 **Purpose**: Main CLI executable
 
 **Commands**:
+
 - `blueprintdata new` - Create new project from template
 - `blueprintdata analytics init` - Initialize analytics agent
 - `blueprintdata analytics sync` - Sync agent context
@@ -339,6 +351,7 @@ abstract class BaseWarehouseConnector {
 - `blueprintdata auth register/login/logout/status` - Auth commands
 
 **Structure**:
+
 ```
 apps/cli/
 ├── src/
@@ -367,12 +380,14 @@ apps/cli/
 **Purpose**: React-based chat UI for analytics agent
 
 **Technology**:
+
 - React 18
 - TanStack Router for routing
 - Vite for build tooling
 - shadcn/ui components (Radix UI + Tailwind CSS)
 
 **Features**:
+
 - Authentication (login/register)
 - Chat interface with message history
 - WebSocket connection to gateway
@@ -381,6 +396,7 @@ apps/cli/
 - Session management
 
 **Structure**:
+
 ```
 apps/web/
 ├── src/
@@ -484,7 +500,7 @@ CLI Parser (Commander.js)
    Gateway → AgentService.processMessage()
 
 4. Agent processes with LLM
-   AgentService → LLM Client → Anthropic/OpenAI API
+   AgentService → LLM Client → OpenRouter API
 
 5. LLM requests tool call
    LLM Response → AgentService → ToolRegistry
@@ -518,7 +534,7 @@ blueprintdata analytics init
     │   └─→ WarehouseConnector.testConnection()
     │
     ├─→ Collect LLM configuration
-    │   ├─→ Select provider (Anthropic/OpenAI)
+    │   ├─→ Select provider (OpenRouter)
     │   ├─→ Select chat model
     │   └─→ Select profiling model
     │
@@ -601,12 +617,14 @@ blueprintdata analytics chat
 **Pattern**: Bun workspaces with independent packages
 
 **Benefits**:
+
 - Shared code via packages
 - Independent versioning with Changesets
 - Type-safe cross-package imports
 - Faster local development with linking
 
 **Implementation**:
+
 ```json
 // package.json
 {
@@ -619,18 +637,19 @@ blueprintdata analytics chat
 **Pattern**: Thin command wrappers delegate to service classes
 
 **Benefits**:
+
 - Testable business logic
 - Reusable across CLI and API
 - Clear separation of concerns
 
 **Example**:
+
 ```typescript
 // apps/cli/src/commands/analytics/init.ts
-export const initCommand = new Command('init')
-  .action(async (options) => {
-    const service = ServiceFactory.createInitService();
-    await service.initialize(options);
-  });
+export const initCommand = new Command('init').action(async (options) => {
+  const service = ServiceFactory.createInitService();
+  await service.initialize(options);
+});
 ```
 
 ### 3. Strategy Pattern (Connectors)
@@ -638,10 +657,12 @@ export const initCommand = new Command('init')
 **Pattern**: Abstract base class with concrete implementations
 
 **Use Cases**:
+
 - Warehouse connectors (BigQuery, Postgres)
-- LLM clients (Anthropic, OpenAI)
+- LLM clients (OpenRouter)
 
 **Implementation**:
+
 ```typescript
 abstract class BaseWarehouseConnector {
   abstract query(sql: string): Promise<QueryResult>;
@@ -656,11 +677,13 @@ class PostgresConnector extends BaseWarehouseConnector { ... }
 **Pattern**: Centralized object creation
 
 **Benefits**:
+
 - No circular dependencies
 - Easy to swap implementations
 - Testable with mocks
 
 **Example**:
+
 ```typescript
 export class ServiceFactory {
   static createInitService(): InitService {
@@ -675,11 +698,13 @@ export class ServiceFactory {
 **Pattern**: Drizzle ORM provides type-safe data access
 
 **Benefits**:
+
 - Type-safe queries
 - Automatic migrations
 - Easy to test with in-memory database
 
 **Example**:
+
 ```typescript
 const user = await db.query.users.findFirst({
   where: eq(users.username, username),
@@ -691,11 +716,13 @@ const user = await db.query.users.findFirst({
 **Pattern**: Dynamic tool registration and discovery
 
 **Benefits**:
+
 - Extensible tool system
 - RBAC support (future)
 - Type-safe tool definitions
 
 **Example**:
+
 ```typescript
 const registry = new ToolRegistry();
 registry.register('query_warehouse', new QueryTool(connector));
@@ -713,6 +740,7 @@ const result = await tool.execute(parameters);
 The monorepo uses TypeScript project references for incremental builds.
 
 **Root Configuration** (`tsconfig.json`):
+
 ```json
 {
   "files": [],

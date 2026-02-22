@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import yaml from 'yaml';
-import type { AnalyticsConfig } from '@blueprintdata/models';
+import type { AnalyticsConfig, LLMProvider } from '@blueprintdata/models';
 import type { AnalyticsConfigV2 } from '@blueprintdata/config';
 
 /**
@@ -333,10 +333,10 @@ export async function createInitializedTestProject(
       dbtProfilesPath: path.join(project.path, 'profiles.yml'),
     },
     llm: {
-      provider: 'anthropic',
+      provider: 'openrouter' as LLMProvider,
       apiKey: 'test-key',
-      chatModel: 'claude-sonnet-4-5',
-      profilingModel: 'claude-haiku-4-5',
+      chatModel: 'openrouter/auto',
+      profilingModel: 'google/gemini-2.5-flash',
     },
     warehouse: {
       type: 'postgres',
