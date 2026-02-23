@@ -21,10 +21,16 @@ export interface WSMessage {
   timestamp: string;
 }
 
+export interface ChatHistoryItemPayload {
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string;
+}
+
 export interface ChatMessagePayload {
   sessionId: string;
   content: string;
   modelId?: string;
+  history?: ChatHistoryItemPayload[];
 }
 
 export interface ModelsRequestPayload {

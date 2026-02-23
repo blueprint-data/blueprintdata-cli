@@ -579,48 +579,50 @@ ORDER BY date
 - Parameter validation
 - Error handling
 
-#### 2. list_context_docs
+#### 2. list_files
 
-List markdown files available under the agent-context directory.
+List files and folders under the workspace root.
 
 **Capabilities**:
 
-- Recursive listing of `.md` files
+- Recursive or shallow listing
 - Optional subdirectory scoping
 - Limits to prevent huge responses
 
 **Example:**
 
 ```
-subdir: "models"
-files: ["models/dim_customers.md", "models/fct_orders.md", ...]
+path: "models"
+entries: [{"path":"models/marts","type":"directory"}, {"path":"models/marts/fct_orders.sql","type":"file"}, ...]
 ```
 
 **Use Cases**:
 
-- Discover available context files
-- Navigate model documentation
+- Discover dbt model locations
+- Navigate project structure
 
-#### 3. read_context_doc
+#### 3. read_file
 
-Read a specific markdown file from agent-context.
+Read a file from the workspace root.
 
 **Capabilities**:
 
-- Reads `.md` content
-- Truncates long files
-- Path safety checks
+- Reads arbitrary text files
+- Line-window selection (startLine/lineCount)
+- Truncates long content
 
 **Example:**
 
 ```
-path: "models/dim_customers.md"
+path: "models/marts/fct_orders.sql"
+startLine: 1
+lineCount: 200
 ```
 
 **Use Cases**:
 
-- Inspect model documentation
-- Review summaries and profiles
+- Inspect dbt SQL models
+- Review documentation or configs
 
 #### 4. generate_chart
 
@@ -670,8 +672,8 @@ Agent (LLM) decides which tool to use
     │   ├─→ Execute query
     │   └─→ Return results
     │
-    ├─→ list_context_docs / read_context_doc
-    │   ├─→ List docs / read markdown
+    ├─→ list_files / read_file
+    │   ├─→ List workspace / read file
     │   └─→ Return context
     │
     └─→ generate_chart

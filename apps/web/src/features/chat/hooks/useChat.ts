@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useWebSocket } from './useWebSocket';
 import type { WSMessage } from '@blueprintdata/gateway';
 
@@ -69,6 +69,7 @@ export function useChat(sessionId?: string) {
   const [gatewayUrl, setGatewayUrl] = useState<string | null>(null);
   const activeSessionId = sessionId || 'default';
   const storageKey = `blueprintdata.chat.${activeSessionId}`;
+  const messagesRef = useRef<Message[]>([]);
 
   const handleMessage = useCallback(
     (message: GatewayMessage) => {
@@ -251,6 +252,10 @@ export function useChat(sessionId?: string) {
     }
   }, [messages, storageKey]);
 
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   const { sendMessage: sendWsMessage, isConnected } = useWebSocket<GatewayMessage>({
     url: gatewayUrl || '',
     token: null,
@@ -277,6 +282,11 @@ export function useChat(sessionId?: string) {
         return;
       }
 
+      const history = messagesRef.current
+        .filter((message) => message.content && message.content.trim().length > 0)
+        .map((message) => ({ role: message.role, content: message.content }))
+        .slice(-20);
+
       // Add user message to local state
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -294,6 +304,7 @@ export function useChat(sessionId?: string) {
           sessionId: sessionId || 'default',
           content,
           modelId: selectedModelId || undefined,
+          history,
         },
         timestamp: new Date().toISOString(),
       });

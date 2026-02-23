@@ -4,7 +4,9 @@ import { GatewayServer } from '@blueprintdata/gateway';
 import {
   AgentService,
   LLMClient,
+  getDefaultModel,
   getModelsForProvider,
+  normalizeModelId,
   validateModel,
   type Message,
 } from '@blueprintdata/analytics';
@@ -127,9 +129,18 @@ export class ChatService {
     const config = await loadConfig(projectPath);
     this.warehouse = await createWarehouseConnector(config.warehouseConnection);
     this.llmProvider = config.llmProvider;
-    this.llmModel = config.llmModel;
+    const normalizedModel = normalizeModelId(config.llmModel);
+    if (validateModel(normalizedModel, config.llmProvider)) {
+      this.llmModel = normalizedModel;
+    } else {
+      const fallback = getDefaultModel(config.llmProvider, 'chat');
+      this.llmModel = fallback.id;
+      logger.warn(
+        `Invalid LLM model configured (${config.llmModel}). Falling back to ${fallback.id}.`
+      );
+    }
 
-    const llmClient = new LLMClient(config.llmProvider, config.llmApiKey, config.llmModel);
+    const llmClient = new LLMClient(config.llmProvider, config.llmApiKey, this.llmModel);
     const agentContextPath = path.join(projectPath, 'agent-context');
     const systemPromptPath = path.join(agentContextPath, 'system_prompt.md');
     const systemPrompt = fs.existsSync(systemPromptPath)
@@ -188,15 +199,35 @@ export class ChatService {
       },
       handleChatMessage: async (payload) => {
         const sessionId = payload.sessionId || 'default';
-        const history = this.conversationHistory.get(sessionId) || [];
+        const storedHistory = this.conversationHistory.get(sessionId) || [];
+        const incomingHistory = Array.isArray(payload.history)
+          ? payload.history
+              .filter(
+                (entry) =>
+                  entry &&
+                  typeof entry === 'object' &&
+                  typeof entry.role === 'string' &&
+                  typeof entry.content === 'string' &&
+                  entry.content.trim().length > 0
+              )
+              .map((entry) => ({
+                role: entry.role as Message['role'],
+                content: entry.content,
+              }))
+          : [];
+        const history = storedHistory.length > 0 ? storedHistory : incomingHistory;
         const toolMessages: Message[] = [];
         const toolCallById = new Map<
           string,
           { tool: string; arguments: Record<string, unknown> }
         >();
+        const normalizedOverride =
+          payload.modelId && this.llmProvider ? normalizeModelId(payload.modelId) : undefined;
         const modelOverride =
-          payload.modelId && this.llmProvider && validateModel(payload.modelId, this.llmProvider)
-            ? payload.modelId
+          normalizedOverride &&
+          this.llmProvider &&
+          validateModel(normalizedOverride, this.llmProvider)
+            ? normalizedOverride
             : undefined;
         if (payload.modelId && !modelOverride) {
           logger.warn(`Ignoring invalid model override: ${payload.modelId}`);

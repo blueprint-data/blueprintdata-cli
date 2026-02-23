@@ -55,9 +55,10 @@ export const queryWarehouseTool: Tool = {
     }
 
     // Add limit if not present
-    let finalSql = sql;
-    if (!/\bLIMIT\b/i.test(sql)) {
-      finalSql = `${sql} LIMIT ${limit}`;
+    const sqlWithoutTrailingSemicolon = sql.replace(/;\s*$/, '');
+    let finalSql = sqlWithoutTrailingSemicolon;
+    if (!/\bLIMIT\b/i.test(sqlWithoutTrailingSemicolon)) {
+      finalSql = `${sqlWithoutTrailingSemicolon} LIMIT ${limit}`;
     }
 
     try {

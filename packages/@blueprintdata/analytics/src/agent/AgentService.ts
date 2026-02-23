@@ -1,15 +1,10 @@
 import type { Database } from '@blueprintdata/database';
 import type { BaseWarehouseConnector } from '@blueprintdata/warehouse';
-import { existsSync, promises as fs } from 'node:fs';
-import path from 'node:path';
 import type { ChatGenerateResult, ChatMessage, LLMClient, ToolCall } from '../llm/client.js';
 import { ToolRegistry } from '../tools/registry.js';
 import { queryWarehouseTool } from '../tools/implementations/QueryTool.js';
 import { generateChartTool } from '../tools/implementations/ChartTool.js';
-import {
-  listContextDocsTool,
-  readContextDocTool,
-} from '../tools/implementations/ContextDocsTool.js';
+import { listFilesTool, readFileTool } from '../tools/implementations/FilesystemTools.js';
 import type { ToolContext } from '../tools/types.js';
 
 export interface AgentConfig {
@@ -67,8 +62,8 @@ export class AgentService {
     // Register default tools
     this.toolRegistry.register(queryWarehouseTool);
     this.toolRegistry.register(generateChartTool);
-    this.toolRegistry.register(listContextDocsTool);
-    this.toolRegistry.register(readContextDocTool);
+    this.toolRegistry.register(listFilesTool);
+    this.toolRegistry.register(readFileTool);
 
     this.toolContext = {
       database: config.database,
@@ -104,7 +99,7 @@ export class AgentService {
     messages.push({ role: 'user', content: message });
 
     const toolDefinitions = this.toolRegistry.list();
-    const maxToolIterations = 12;
+    const maxToolIterations = 20;
 
     console.log('[AgentService] Sending LLM request', {
       messageCount: messages.length,
@@ -292,67 +287,9 @@ Always explain your reasoning and provide insights based on the data.`;
 
   private async getInitialContextPrompt(): Promise<string> {
     const currentDate = new Date().toISOString();
-    const agentContextPath = this.config.agentContextPath;
+    const workspaceRoot = process.cwd();
 
-    if (!existsSync(agentContextPath)) {
-      return `Current date: ${currentDate}\nAgent context directory not found.`;
-    }
-
-    const files = await this.listMarkdownFiles(agentContextPath, 200);
-    if (files.length === 0) {
-      return `Current date: ${currentDate}\nNo markdown context files found under agent-context.`;
-    }
-
-    const listing = files.map((file) => `- ${file}`).join('\n');
-    return `Current date: ${currentDate}\nAvailable context docs:\n${listing}`;
-  }
-
-  private async listMarkdownFiles(baseDir: string, limit: number): Promise<string[]> {
-    const results: string[] = [];
-    let truncated = false;
-
-    const walk = async (currentDir: string): Promise<void> => {
-      if (truncated) {
-        return;
-      }
-
-      let entries;
-      try {
-        entries = await fs.readdir(currentDir, { withFileTypes: true });
-      } catch {
-        return;
-      }
-
-      for (const entry of entries) {
-        if (truncated) {
-          return;
-        }
-
-        const fullPath = path.join(currentDir, entry.name);
-        if (entry.isDirectory()) {
-          await walk(fullPath);
-          continue;
-        }
-
-        if (!entry.isFile()) {
-          continue;
-        }
-
-        if (!entry.name.toLowerCase().endsWith('.md')) {
-          continue;
-        }
-
-        results.push(path.relative(baseDir, fullPath));
-
-        if (results.length >= limit) {
-          truncated = true;
-          return;
-        }
-      }
-    };
-
-    await walk(baseDir);
-    return results;
+    return `Current date: ${currentDate}\nWorkspace root: ${workspaceRoot}\nNote: The agent-context folder contains curated markdown summaries for some models and may cover a subset of the full dbt project.`;
   }
 
   private getToolInstructions(): string {
@@ -363,11 +300,9 @@ Always explain your reasoning and provide insights based on the data.`;
 ${toolDescriptions}
 
 When users ask questions about data:
-1. Use list_context_docs and read_context_doc to browse agent-context markdown files
+1. Use list_files and read_file to inspect dbt files and project context under the workspace root
 2. Use the query_warehouse tool to execute SQL queries and retrieve data
 3. Use the generate_chart tool to create visualizations when appropriate
-
-Important: Context doc paths are case-sensitive. Always use the exact file paths returned by list_context_docs.
 
 Use tool calls when needed, then answer normally after receiving tool results.`;
   }

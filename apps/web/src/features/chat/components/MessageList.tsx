@@ -1,10 +1,43 @@
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Tooltip,
+  Legend,
+  Title,
+  ArcElement,
+  BarController,
+  LineController,
+  PieController,
+  DoughnutController,
+} from 'chart.js';
+import { Chart } from 'react-chartjs-2';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { User, Bot, Settings, Copy } from 'lucide-react';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  BarController,
+  LineController,
+  PieController,
+  DoughnutController,
+  Tooltip,
+  Legend,
+  Title
+);
 
 interface Message {
   id: string;
@@ -32,8 +65,8 @@ interface Message {
 const TOOL_LABELS: Record<string, string> = {
   query_warehouse: 'Executing query',
   generate_chart: 'Generating chart',
-  list_context_docs: 'Listing context docs',
-  read_context_doc: 'Reading context doc',
+  list_files: 'Listing files',
+  read_file: 'Reading file',
 };
 
 interface MessageListProps {
@@ -43,14 +76,31 @@ interface MessageListProps {
 export function MessageList({ messages }: MessageListProps) {
   return (
     <div className="space-y-6">
-      {messages.map((message) => (
-        <MessageItem key={message.id} message={message} />
-      ))}
+      {messages.map((message, index) => {
+        const nextMessage = messages[index + 1];
+        const nextAssistantHasChart =
+          message.role === 'tool' && nextMessage?.role === 'assistant'
+            ? Boolean(extractChartConfigFromMarkdown(nextMessage.content))
+            : false;
+        return (
+          <MessageItem
+            key={message.id}
+            message={message}
+            suppressToolMedia={nextAssistantHasChart}
+          />
+        );
+      })}
     </div>
   );
 }
 
-function MessageItem({ message }: { message: Message }) {
+function MessageItem({
+  message,
+  suppressToolMedia,
+}: {
+  message: Message;
+  suppressToolMedia: boolean;
+}) {
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
   const isTool = message.role === 'tool';
@@ -62,7 +112,7 @@ function MessageItem({ message }: { message: Message }) {
   const toolArguments = toolCall?.arguments || {};
   const toolDetails = getToolDetails(toolCall?.name, toolArguments);
   const toolResultDetails = formatToolResult(toolResult);
-  const toolMedia = toolResult?.media;
+  const toolMedia = suppressToolMedia ? undefined : toolResult?.media;
   const imageSrc =
     toolMedia && toolMedia.mimeType.startsWith('image/')
       ? `data:${toolMedia.mimeType};base64,${toolMedia.data}`
@@ -205,13 +255,95 @@ const markdownComponents: Components = {
   p: ({ node, ...props }) => <p className="mb-3 last:mb-0" {...props} />,
   ul: ({ node, ...props }) => <ul className="mb-3 list-disc pl-5 last:mb-0" {...props} />,
   ol: ({ node, ...props }) => <ol className="mb-3 list-decimal pl-5 last:mb-0" {...props} />,
-  code: ({ node, ...props }) => (
-    <code className="rounded bg-muted/50 px-1 py-0.5 text-[0.75rem] text-foreground" {...props} />
-  ),
+  code: ({ node, className, children, ...props }) => {
+    const content = Array.isArray(children) ? children.join('') : String(children ?? '');
+    const isInline = !content.includes('\n') && !className?.includes('language-');
+    const chartConfig = isInline ? null : parseChartConfig(content);
+
+    if (chartConfig) {
+      const chartType = typeof chartConfig.type === 'string' ? chartConfig.type : 'bar';
+      const chartData = chartConfig.data ?? {};
+      const chartOptions = chartConfig.options ?? {};
+      return (
+        <div className="my-3 space-y-2">
+          <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+            <Chart type={chartType as any} data={chartData as any} options={chartOptions as any} />
+          </div>
+          <details className="rounded-lg border border-border/70 bg-background/60 p-2 text-xs">
+            <summary className="cursor-pointer font-medium text-muted-foreground">
+              View chart config
+            </summary>
+            <pre className="mt-2 whitespace-pre-wrap rounded-md bg-muted/40 p-2 text-[0.7rem] leading-relaxed text-foreground">
+              <code>{content.trim()}</code>
+            </pre>
+          </details>
+        </div>
+      );
+    }
+
+    return (
+      <code className="rounded bg-muted/50 px-1 py-0.5 text-[0.75rem] text-foreground" {...props}>
+        {children}
+      </code>
+    );
+  },
   pre: ({ node, ...props }) => (
     <pre className="mb-3 overflow-x-auto rounded-lg bg-muted/40 p-3 text-xs" {...props} />
   ),
 } as const;
+
+function parseChartConfig(raw: string) {
+  const trimmed = raw.trim();
+  if (!trimmed || !/^[\[{]/.test(trimmed)) {
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return null;
+  }
+
+  const candidate =
+    'chartConfig' in (parsed as Record<string, unknown>)
+      ? (parsed as { chartConfig?: unknown }).chartConfig
+      : parsed;
+
+  if (!candidate || typeof candidate !== 'object') {
+    return null;
+  }
+
+  const { type, data } = candidate as { type?: unknown; data?: unknown };
+  if (typeof type !== 'string' || !data || typeof data !== 'object') {
+    return null;
+  }
+
+  return candidate as { type: string; data: Record<string, unknown>; options?: unknown };
+}
+
+function extractChartConfigFromMarkdown(content: string) {
+  if (!content) {
+    return null;
+  }
+
+  const fencedBlockPattern = /```[a-zA-Z]*\s*([\s\S]*?)```/g;
+  let match: RegExpExecArray | null = null;
+
+  while ((match = fencedBlockPattern.exec(content)) !== null) {
+    const codeBlock = match[1] || '';
+    const config = parseChartConfig(codeBlock);
+    if (config) {
+      return config;
+    }
+  }
+
+  return null;
+}
 
 function getToolDetails(toolName: string | undefined, args: Record<string, unknown>) {
   if (!toolName) {
@@ -225,14 +357,14 @@ function getToolDetails(toolName: string | undefined, args: Record<string, unkno
     }
   }
 
-  if (toolName === 'list_context_docs') {
-    const subdir = typeof args.subdir === 'string' ? args.subdir : '';
-    if (subdir) {
-      return { label: 'View subdir', content: subdir };
+  if (toolName === 'list_files') {
+    const targetPath = typeof args.path === 'string' ? args.path : '';
+    if (targetPath) {
+      return { label: 'View path', content: targetPath };
     }
   }
 
-  if (toolName === 'read_context_doc') {
+  if (toolName === 'read_file') {
     const targetPath = typeof args.path === 'string' ? args.path : '';
     if (targetPath) {
       return { label: 'View path', content: targetPath };

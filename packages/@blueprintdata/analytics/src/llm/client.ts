@@ -93,12 +93,21 @@ export class LLMClient {
 
     messages.push({ role: 'user', content: prompt });
 
-    const response = await this.openRouterClient.chat.send({
+    const requestPayload = {
       model: this.modelId,
       messages,
       temperature,
       maxTokens,
-    });
+    };
+
+    let response: Awaited<ReturnType<OpenRouter['chat']['send']>>;
+
+    try {
+      response = await this.openRouterClient.chat.send(requestPayload);
+    } catch (error) {
+      this.logOpenRouterError('generate', error, requestPayload);
+      throw error;
+    }
 
     const message = response.choices?.[0]?.message as { content?: unknown } | undefined;
     let content = '';
@@ -172,7 +181,7 @@ export class LLMClient {
     const tools = options?.tools ? this.buildTools(options.tools) : undefined;
     const toolChoice = options?.toolChoice;
 
-    const response = await this.openRouterClient.chat.send({
+    const requestPayload = {
       model: this.modelId,
       messages: this.buildMessages(messages) as unknown as Parameters<
         typeof this.openRouterClient.chat.send
@@ -181,7 +190,16 @@ export class LLMClient {
       maxTokens,
       tools: tools as Parameters<typeof this.openRouterClient.chat.send>[0]['tools'],
       toolChoice: toolChoice as Parameters<typeof this.openRouterClient.chat.send>[0]['toolChoice'],
-    });
+    };
+
+    let response: Awaited<ReturnType<OpenRouter['chat']['send']>>;
+
+    try {
+      response = await this.openRouterClient.chat.send(requestPayload);
+    } catch (error) {
+      this.logOpenRouterError('generateChat', error, requestPayload);
+      throw error;
+    }
 
     const message = response.choices?.[0]?.message as
       | {
@@ -394,6 +412,76 @@ export class LLMClient {
         },
       };
     });
+  }
+
+  private logOpenRouterError(
+    requestType: 'generate' | 'generateChat',
+    error: unknown,
+    payload: Record<string, unknown>
+  ): void {
+    const errorObject = error as {
+      name?: string;
+      message?: string;
+      stack?: string;
+      details?: unknown;
+      statusCode?: number;
+      code?: string | number;
+      provider?: string;
+      model?: string;
+    };
+
+    const messages = Array.isArray(payload.messages)
+      ? (payload.messages as Array<{ content?: unknown }>)
+      : [];
+    const contentLength = messages.reduce((total, message) => {
+      if (typeof message.content === 'string') {
+        return total + message.content.length;
+      }
+      if (Array.isArray(message.content)) {
+        return (
+          total +
+          message.content.reduce((innerTotal, part) => {
+            if (typeof part === 'string') {
+              return innerTotal + part.length;
+            }
+            return innerTotal;
+          }, 0)
+        );
+      }
+      return total;
+    }, 0);
+
+    const tools = Array.isArray(payload.tools)
+      ? (payload.tools as Array<{ function?: { name?: unknown } }>)
+      : [];
+    const toolNames = tools
+      .map((tool) => (typeof tool.function?.name === 'string' ? tool.function.name : ''))
+      .filter(Boolean);
+
+    console.error('OpenRouter request failed', {
+      requestType,
+      model: this.modelId,
+      messageCount: messages.length,
+      toolCount: tools.length,
+      toolNames,
+      contentLength,
+      error: {
+        name: errorObject?.name,
+        message: errorObject?.message,
+        statusCode: errorObject?.statusCode,
+        code: errorObject?.code,
+        provider: errorObject?.provider,
+        model: errorObject?.model,
+        details: errorObject?.details,
+      },
+    });
+
+    if (process.env.BLUEPRINTDATA_VERBOSE === '1') {
+      console.error('OpenRouter request payload', payload);
+      if (errorObject?.stack) {
+        console.error('OpenRouter error stack', errorObject.stack);
+      }
+    }
   }
 }
 

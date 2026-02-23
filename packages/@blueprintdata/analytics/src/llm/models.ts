@@ -139,6 +139,10 @@ const modelsConfig = {
   ],
 };
 
+const MODEL_ID_ALIASES: Record<string, string> = {
+  'google/gemini-3-flash-preview': 'google/gemini-3-flash-preview-20251217',
+};
+
 export const OPENROUTER_MODELS: LLMModel[] = modelsConfig.openrouter.map((model) => ({
   ...model,
   recommended: model.recommended || undefined,
@@ -159,7 +163,8 @@ export function getModelsForProvider(provider: LLMProvider): LLMModel[] {
  */
 export function getModel(modelId: string): LLMModel | undefined {
   const allModels = [...OPENROUTER_MODELS];
-  return allModels.find((m) => m.id === modelId);
+  const normalized = normalizeModelId(modelId);
+  return allModels.find((m) => m.id === normalized);
 }
 
 /**
@@ -190,7 +195,12 @@ export function getDefaultModel(
  */
 export function validateModel(modelId: string, provider: LLMProvider): boolean {
   const models = getModelsForProvider(provider);
-  return models.some((m) => m.id === modelId);
+  const normalized = normalizeModelId(modelId);
+  return models.some((m) => m.id === normalized);
+}
+
+export function normalizeModelId(modelId: string): string {
+  return MODEL_ID_ALIASES[modelId] || modelId;
 }
 
 /**
