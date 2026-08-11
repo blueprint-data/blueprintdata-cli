@@ -1,9 +1,24 @@
-import { build } from 'esbuild';
+import { build, type Plugin } from 'esbuild';
 import { mkdirSync } from 'fs';
 import { chmod } from 'fs/promises';
 
 // Ensure dist directory exists
 mkdirSync('dist', { recursive: true });
+
+// Internal @blueprintdata/* workspace packages are private and never
+// published to npm, so they must be bundled into dist/index.js. Everything
+// else (third-party npm dependencies) stays external and is resolved from
+// the installer's node_modules at runtime, same as before.
+const bundleWorkspacePackages: Plugin = {
+  name: 'bundle-workspace-packages',
+  setup(pluginBuild) {
+    pluginBuild.onResolve({ filter: /.*/ }, (args) => {
+      if (args.path.startsWith('.') || args.path.startsWith('/')) return;
+      if (args.path.startsWith('@blueprintdata/')) return;
+      return { path: args.path, external: true };
+    });
+  },
+};
 
 await build({
   entryPoints: ['src/index.ts'],
@@ -17,7 +32,7 @@ await build({
   },
   sourcemap: true,
   minify: true,
-  packages: 'external',
+  plugins: [bundleWorkspacePackages],
   allowOverwrite: true,
   inject: [],
 });
