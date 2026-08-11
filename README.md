@@ -15,7 +15,7 @@ npm install -g blueprintdata-cli
 Or use directly with npx:
 
 ```bash
-npx blueprintdata-cli new
+npx blueprintdata-cli template
 ```
 
 ## Prerequisites
@@ -48,7 +48,7 @@ An LLM-powered assistant that:
 #### Create a New Project
 
 ```bash
-blueprintdata new [project-name]
+blueprintdata template [project-name]
 ```
 
 The CLI will prompt you for:
@@ -60,9 +60,9 @@ The CLI will prompt you for:
 ### Options
 
 ```bash
-blueprintdata new my-project --stack lite-bigquery
+blueprintdata template my-project --stack lite-bigquery
 # or
-blueprintdata new my-project --stack lite-postgres
+blueprintdata template my-project --stack lite-postgres
 ```
 
 - `--stack <type>`: Stack type (lite-bigquery, lite-postgres, aws; `lite` remains an alias for lite-bigquery)
