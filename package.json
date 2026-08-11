@@ -29,7 +29,7 @@
     "clean": "bun run --filter '*' clean && rm -rf node_modules",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "bun run build && changeset publish",
+    "release": "bun run build:packages && bun run build:cli && changeset publish",
     "link": "bun run link:packages && bun run link:cli",
     "link:packages": "cd packages/@blueprintdata/models && bun link && cd ../errors && bun link && cd ../config && bun link && cd ../warehouse && bun link && cd ../analytics && bun link && cd ../gateway && bun link",
     "link:cli": "cd apps/cli && bun link",

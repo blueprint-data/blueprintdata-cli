@@ -7,12 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": [
-    "@blueprintdata/models",
-    "@blueprintdata/errors",
-    "@blueprintdata/config",
-    "@blueprintdata/warehouse",
-    "@blueprintdata/analytics",
-    "@blueprintdata/gateway"
-  ]
+  "ignore": []
 }
